@@ -6,7 +6,7 @@ import (
 
 type DB struct {
 	name DBName
-	Exec
+	Handle
 }
 
 func NewDB(name DBName, xa ...Xa) DB {
@@ -17,7 +17,7 @@ func NewDB(name DBName, xa ...Xa) DB {
 
 	return DB{
 		name: name,
-		Exec: Exec{
+		Handle: Handle{
 			name: name,
 			tx:   tx,
 			pool: connPools[name], //access的pool

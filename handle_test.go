@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func TestExec_Batch(t *testing.T) {
+func TestHandle_Batch(t *testing.T) {
 	type fields struct {
 		name DBName
 		tx   pgx.Tx
@@ -41,7 +41,7 @@ func TestExec_Batch(t *testing.T) {
 	}
 }
 
-func TestExec_Copy(t *testing.T) {
+func TestHandle_Copy(t *testing.T) {
 	type fields struct {
 		name DBName
 		tx   pgx.Tx
@@ -80,33 +80,25 @@ func TestExec_Copy(t *testing.T) {
 	}
 }
 
-func TestExec_Exec(t *testing.T) {
-	type fields struct {
-		name DBName
-		tx   pgx.Tx
-		pool *pgxpool.Pool
-	}
-	type args struct {
-		query string
-		args  []any
-	}
+func TestHandle_Exec(t *testing.T) {
 	tests := []struct {
 		name       string
-		fields     fields
-		args       args
 		wantResult pgconn.CommandTag
 		wantErr    bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test Exec",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := Exec{
-				name: tt.fields.name,
-				tx:   tt.fields.tx,
-				pool: tt.fields.pool,
-			}
-			gotResult, err := p.Exec(tt.args.query, tt.args.args...)
+			//连接数据库
+			var account, access DBName
+			Conn(&account, &access)
+
+			//测试
+			accountDB := NewDB(account)
+			_, err := accountDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 18, "r")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Exec() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -118,14 +110,14 @@ func TestExec_Exec(t *testing.T) {
 	}
 }
 
-func TestExec_Query(t *testing.T) {
+func TestHandle_Query(t *testing.T) {
 	tests := []struct {
 		name     string
 		wantRows pgx.Rows
 		wantErr  bool
 	}{
 		{
-			name: "test exec query",
+			name: "test Query",
 		},
 	}
 	for _, tt := range tests {

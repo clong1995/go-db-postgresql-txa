@@ -11,13 +11,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Exec struct {
+type Handle struct {
 	name DBName
 	tx   pgx.Tx
 	pool *pgxpool.Pool
 }
 
-func (p Exec) Query(query string, args ...any) (rows pgx.Rows, err error) {
+func (p Handle) Query(query string, args ...any) (rows pgx.Rows, err error) {
 	if p.tx != nil {
 		if rows, err = p.tx.Query(context.Background(), query, args...); err != nil {
 			log.Println(pcolor.Error(err))
@@ -37,7 +37,7 @@ func (p Exec) Query(query string, args ...any) (rows pgx.Rows, err error) {
 	return
 }
 
-func (p Exec) Exec(query string, args ...any) (result pgconn.CommandTag, err error) {
+func (p Handle) Exec(query string, args ...any) (result pgconn.CommandTag, err error) {
 	if p.tx != nil {
 		if result, err = p.tx.Exec(context.Background(), query, args...); err != nil {
 			log.Println(pcolor.Error(err))
@@ -59,7 +59,7 @@ func (p Exec) Exec(query string, args ...any) (result pgconn.CommandTag, err err
 	return
 }
 
-func (p Exec) Batch(query string, data [][]any) (err error) {
+func (p Handle) Batch(query string, data [][]any) (err error) {
 	batch := &pgx.Batch{}
 	for _, v := range data {
 		_ = batch.Queue(query, v...)
@@ -72,7 +72,7 @@ func (p Exec) Batch(query string, data [][]any) (err error) {
 	return
 }
 
-func (p Exec) Copy(tableName string, columnNames []string, data [][]any) (rowsAffected int64, err error) {
+func (p Handle) Copy(tableName string, columnNames []string, data [][]any) (rowsAffected int64, err error) {
 	table := pgx.Identifier{tableName}
 	if rowsAffected, err = p.tx.CopyFrom(
 		context.Background(),
