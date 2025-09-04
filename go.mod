@@ -1,6 +1,6 @@
 module github.com/clong1995/go-db-postgresql-txa
 
-go 1.24
+go 1.25
 
 require (
 	github.com/clong1995/go-ansi-color v0.0.0-20250821034610-68ee7d7f3e94
@@ -17,3 +17,5 @@ require (
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 )
+
+replace github.com/clong1995/go-config => /Users/markeckles/Desktop/go-mod/go-config
