@@ -1,40 +1,47 @@
 package db
 
 import (
-	"reflect"
+	"log"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestHandle_Batch(t *testing.T) {
-	type fields struct {
-		name DBName
-		tx   pgx.Tx
-		pool *pgxpool.Pool
-	}
-	type args struct {
-		query string
-		data  [][]any
-	}
 	tests := []struct {
 		name    string
-		fields  fields
-		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test batch",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := Exec{
-				name: tt.fields.name,
-				tx:   tt.fields.tx,
-				pool: tt.fields.pool,
-			}
-			if err := p.Batch(tt.args.query, tt.args.data); (err != nil) != tt.wantErr {
+
+			//连接数据源
+			var account, access DBName
+			DataSource(&account, &access)
+			//关闭数据源
+			defer Close()
+
+			//启动事物
+			if err := Tx([]DBName{account}, func(xa Xa) (err error) {
+				//连接数据库
+				accountDB := Conn(account, xa)
+				if err = accountDB.Batch(
+					"INSERT INTO demo (id,name) VALUES($1,$2)",
+					[][]any{
+						{21, "u"},
+						{22, "v"},
+					},
+				); err != nil {
+					log.Println(err)
+					return
+				}
+				return
+			}); (err != nil) != tt.wantErr {
 				t.Errorf("Batch() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -42,39 +49,42 @@ func TestHandle_Batch(t *testing.T) {
 }
 
 func TestHandle_Copy(t *testing.T) {
-	type fields struct {
-		name DBName
-		tx   pgx.Tx
-		pool *pgxpool.Pool
-	}
-	type args struct {
-		tableName   string
-		columnNames []string
-		data        [][]any
-	}
 	tests := []struct {
 		name             string
-		fields           fields
-		args             args
 		wantRowsAffected int64
 		wantErr          bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test copy",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := Exec{
-				name: tt.fields.name,
-				tx:   tt.fields.tx,
-				pool: tt.fields.pool,
-			}
-			gotRowsAffected, err := p.Copy(tt.args.tableName, tt.args.columnNames, tt.args.data)
-			if (err != nil) != tt.wantErr {
+			//连接数据源
+			var account, access DBName
+			DataSource(&account, &access)
+			//关闭数据源
+			defer Close()
+
+			//启动事物
+			if err := Tx([]DBName{account}, func(xa Xa) (err error) {
+				//连接数据库
+				accountDB := Conn(account, xa)
+				if _, err = accountDB.Copy(
+					"demo",
+					[]string{"id", "name"},
+					[][]any{
+						{19, "s"},
+						{20, "t"},
+					},
+				); err != nil {
+					log.Println(err)
+					return
+				}
+				return
+			}); (err != nil) != tt.wantErr {
 				t.Errorf("Copy() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if gotRowsAffected != tt.wantRowsAffected {
-				t.Errorf("Copy() gotRowsAffected = %v, want %v", gotRowsAffected, tt.wantRowsAffected)
 			}
 		})
 	}
@@ -92,19 +102,18 @@ func TestHandle_Exec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			//连接数据库
+			//连接数据源
 			var account, access DBName
-			Conn(&account, &access)
+			DataSource(&account, &access)
+			//关闭数据源
+			defer Close()
 
 			//测试
-			accountDB := NewDB(account)
-			_, err := accountDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 18, "r")
-			if (err != nil) != tt.wantErr {
+			accountDB := Conn(account)
+
+			if _, err := accountDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 18, "r"); (err != nil) != tt.wantErr {
 				t.Errorf("Exec() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if !reflect.DeepEqual(gotResult, tt.wantResult) {
-				t.Errorf("Exec() gotResult = %v, want %v", gotResult, tt.wantResult)
 			}
 		})
 	}
@@ -122,12 +131,14 @@ func TestHandle_Query(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			//连接数据库
+			//连接数据源
 			var account, access DBName
-			Conn(&account, &access)
+			DataSource(&account, &access)
+			//关闭数据源
+			defer Close()
 
 			//测试
-			accountDB := NewDB(account)
+			accountDB := Conn(account)
 			rows, err := accountDB.Query("SELECT id,name FROM demo WHERE id < $1", 3)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Query() error = %v, wantErr %v", err, tt.wantErr)
@@ -149,9 +160,6 @@ func TestHandle_Query(t *testing.T) {
 			for _, v := range res {
 				t.Logf("Query() gotRows = %#v", v)
 			}
-
-			//关闭数据库
-			Close()
 		})
 	}
 }

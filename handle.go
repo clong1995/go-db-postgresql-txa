@@ -26,7 +26,7 @@ func (p Handle) Query(query string, args ...any) (rows pgx.Rows, err error) {
 		return
 	}
 	if p.pool == nil {
-		err = fmt.Errorf("%v:pool is nil", p.name)
+		err = fmt.Errorf("%s pool is nil", p.name)
 		log.Println(pcolor.Error(err))
 		return
 	}
@@ -47,7 +47,7 @@ func (p Handle) Exec(query string, args ...any) (result pgconn.CommandTag, err e
 	}
 
 	if p.pool == nil {
-		err = fmt.Errorf("%v:pool is nil", p.name)
+		err = fmt.Errorf("%v pool is nil", p.name)
 		log.Println(pcolor.Error(err))
 		return
 	}
@@ -73,6 +73,11 @@ func (p Handle) Batch(query string, data [][]any) (err error) {
 }
 
 func (p Handle) Copy(tableName string, columnNames []string, data [][]any) (rowsAffected int64, err error) {
+	if p.tx == nil {
+		err = fmt.Errorf("%s tx is nil", p.name)
+		log.Println(err)
+		return
+	}
 	table := pgx.Identifier{tableName}
 	if rowsAffected, err = p.tx.CopyFrom(
 		context.Background(),

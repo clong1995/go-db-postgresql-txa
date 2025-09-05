@@ -15,7 +15,7 @@ type Xa map[DBName]pgx.Tx
 func Tx(dbs []DBName, handle func(Xa) (err error)) (err error) {
 	xa := make(map[DBName]pgx.Tx)
 	for i, v := range dbs {
-		p := connPools[v]
+		p := dataPool[v]
 		if p == nil {
 			err = errors.New(fmt.Sprintf("db[%s] is not exist", v))
 			log.Println(pcolor.Error(err))

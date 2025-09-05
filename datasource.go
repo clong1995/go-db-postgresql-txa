@@ -11,16 +11,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var connPools map[DBName]*pgxpool.Pool
+var dataPool map[DBName]*pgxpool.Pool
 
-func Conn(dbNames ...*DBName) {
+func DataSource(dbNames ...*DBName) {
 	num, err := strconv.ParseInt(config.Value("MAXCONNS"), 10, 32)
 	if err != nil {
 		log.Fatalln(pcolor.Error(err))
 	}
 	maxConn := int32(num)
 
-	connPools = make(map[DBName]*pgxpool.Pool)
+	dataPool = make(map[DBName]*pgxpool.Pool)
 	ds := config.Value("DATASOURCE")
 	for i, v := range strings.Split(ds, ",") {
 		var conf *pgxpool.Config
@@ -38,7 +38,7 @@ func Conn(dbNames ...*DBName) {
 			log.Fatalln(pcolor.Error(err))
 		}
 		database := DBName(conf.ConnConfig.Database)
-		connPools[database] = pool
+		dataPool[database] = pool
 
 		*dbNames[i] = database
 
@@ -47,7 +47,7 @@ func Conn(dbNames ...*DBName) {
 }
 
 func Close() {
-	for k, v := range connPools {
+	for k, v := range dataPool {
 		v.Close()
 		log.Println(pcolor.Succ("[PostgreSQL] %v closed", k))
 	}

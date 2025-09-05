@@ -9,7 +9,7 @@ type DB struct {
 	Handle
 }
 
-func NewDB(name DBName, xa ...Xa) DB {
+func Conn(name DBName, xa ...Xa) DB {
 	var tx pgx.Tx
 	if len(xa) > 0 {
 		tx = xa[0][name]
@@ -20,7 +20,7 @@ func NewDB(name DBName, xa ...Xa) DB {
 		Handle: Handle{
 			name: name,
 			tx:   tx,
-			pool: connPools[name], //access的pool
+			pool: dataPool[name], //access的pool
 		},
 	}
 }
