@@ -97,7 +97,7 @@ func TestHandle_Exec(t *testing.T) {
 		wantErr    bool
 	}{
 		{
-			name: "test Exec",
+			name: "test exec",
 		},
 	}
 	for _, tt := range tests {
@@ -119,6 +119,93 @@ func TestHandle_Exec(t *testing.T) {
 	}
 }
 
+func TestHandle_ExecTx(t *testing.T) {
+	tests := []struct {
+		name       string
+		wantResult pgconn.CommandTag
+		wantErr    bool
+	}{
+		{
+			name: "test exec tx",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			//连接数据源
+			var account, access DBName
+			DataSource(&account, &access)
+			//关闭数据源
+			defer Close()
+
+			if err := Tx([]DBName{account}, func(xa Xa) (err error) {
+				//连接数据库
+				accountDB := Conn(account, xa)
+
+				//操作1
+				if _, err = accountDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 25, "y"); (err != nil) != tt.wantErr {
+					log.Println(err)
+					return
+				}
+
+				//操作2
+				if _, err = accountDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 25, "z"); (err != nil) != tt.wantErr {
+					log.Println(err)
+					return
+				}
+
+				return
+			}); (err != nil) != tt.wantErr {
+				t.Errorf("Exec() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
+
+func TestHandle_ExecTxa(t *testing.T) {
+	tests := []struct {
+		name       string
+		wantResult pgconn.CommandTag
+		wantErr    bool
+	}{
+		{
+			name: "test exec txa",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			//连接数据源
+			var account, access DBName
+			DataSource(&account, &access)
+			//关闭数据源
+			defer Close()
+
+			if err := Tx([]DBName{account}, func(xa Xa) (err error) {
+				//连接数据库
+				accountDB := Conn(account, xa)
+				accessDB := Conn(access, xa)
+
+				//操作1
+				if _, err = accountDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 26, "z"); (err != nil) != tt.wantErr {
+					log.Println(err)
+					return
+				}
+
+				//操作2
+				if _, err = accessDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 11, "k"); (err != nil) != tt.wantErr {
+					log.Println(err)
+					return
+				}
+
+				return
+			}); (err != nil) != tt.wantErr {
+				t.Errorf("Exec() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
+
 func TestHandle_Query(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -126,7 +213,7 @@ func TestHandle_Query(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name: "test Query",
+			name: "test query",
 		},
 	}
 	for _, tt := range tests {
