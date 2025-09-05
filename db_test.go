@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-func TestHandle_Batch(t *testing.T) {
+func TestDB_Batch(t *testing.T) {
 	tests := []struct {
 		name    string
 		wantErr bool
@@ -27,14 +27,12 @@ func TestHandle_Batch(t *testing.T) {
 			defer Close()
 
 			//启动事物
-			if err := Tx([]DBName{account}, func(xa Xa) (err error) {
-				//连接数据库
-				accountDB := Conn(account, xa)
-				if err = accountDB.Batch(
+			if err := Tx(account, func(db DB) (err error) {
+				if err = db.Batch(
 					"INSERT INTO demo (id,name) VALUES($1,$2)",
 					[][]any{
-						{21, "u"},
-						{22, "v"},
+						{34, "hh"},
+						{35, "ii"},
 					},
 				); err != nil {
 					log.Println(err)
@@ -48,7 +46,7 @@ func TestHandle_Batch(t *testing.T) {
 	}
 }
 
-func TestHandle_Copy(t *testing.T) {
+func TestDB_Copy(t *testing.T) {
 	tests := []struct {
 		name             string
 		wantRowsAffected int64
@@ -67,15 +65,13 @@ func TestHandle_Copy(t *testing.T) {
 			defer Close()
 
 			//启动事物
-			if err := Tx([]DBName{account}, func(xa Xa) (err error) {
-				//连接数据库
-				accountDB := Conn(account, xa)
-				if _, err = accountDB.Copy(
+			if err := Tx(account, func(db DB) (err error) {
+				if _, err = db.Copy(
 					"demo",
 					[]string{"id", "name"},
 					[][]any{
-						{19, "s"},
-						{20, "t"},
+						{32, "ff"},
+						{33, "gg"},
 					},
 				); err != nil {
 					log.Println(err)
@@ -90,7 +86,7 @@ func TestHandle_Copy(t *testing.T) {
 	}
 }
 
-func TestHandle_Exec(t *testing.T) {
+func TestDB_Exec(t *testing.T) {
 	tests := []struct {
 		name       string
 		wantResult pgconn.CommandTag
@@ -109,9 +105,9 @@ func TestHandle_Exec(t *testing.T) {
 			defer Close()
 
 			//测试
-			accountDB := Conn(account)
+			db := Conn(account)
 
-			if _, err := accountDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 18, "r"); (err != nil) != tt.wantErr {
+			if _, err := db.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 31, "ee"); (err != nil) != tt.wantErr {
 				t.Errorf("Exec() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
@@ -119,7 +115,7 @@ func TestHandle_Exec(t *testing.T) {
 	}
 }
 
-func TestHandle_ExecTx(t *testing.T) {
+func TestDB_ExecTx(t *testing.T) {
 	tests := []struct {
 		name       string
 		wantResult pgconn.CommandTag
@@ -137,18 +133,15 @@ func TestHandle_ExecTx(t *testing.T) {
 			//关闭数据源
 			defer Close()
 
-			if err := Tx([]DBName{account}, func(xa Xa) (err error) {
-				//连接数据库
-				accountDB := Conn(account, xa)
-
+			if err := Tx(account, func(db DB) (err error) {
 				//操作1
-				if _, err = accountDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 25, "y"); (err != nil) != tt.wantErr {
+				if _, err = db.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 31, "ee"); (err != nil) != tt.wantErr {
 					log.Println(err)
 					return
 				}
 
 				//操作2
-				if _, err = accountDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 25, "z"); (err != nil) != tt.wantErr {
+				if _, err = db.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 30, "ff"); (err != nil) != tt.wantErr {
 					log.Println(err)
 					return
 				}
@@ -162,7 +155,7 @@ func TestHandle_ExecTx(t *testing.T) {
 	}
 }
 
-func TestHandle_ExecTxa(t *testing.T) {
+func TestDB_ExecTxa(t *testing.T) {
 	tests := []struct {
 		name       string
 		wantResult pgconn.CommandTag
@@ -180,11 +173,7 @@ func TestHandle_ExecTxa(t *testing.T) {
 			//关闭数据源
 			defer Close()
 
-			if err := Tx([]DBName{account}, func(xa Xa) (err error) {
-				//连接数据库
-				accountDB := Conn(account, xa)
-				accessDB := Conn(access, xa)
-
+			if err := Tx2(account, access, func(accountDB, accessDB DB) (err error) {
 				//操作1
 				if _, err = accountDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 26, "z"); (err != nil) != tt.wantErr {
 					log.Println(err)
@@ -192,7 +181,7 @@ func TestHandle_ExecTxa(t *testing.T) {
 				}
 
 				//操作2
-				if _, err = accessDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 11, "k"); (err != nil) != tt.wantErr {
+				if _, err = accessDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 27, "aa"); (err != nil) != tt.wantErr {
 					log.Println(err)
 					return
 				}
@@ -206,7 +195,7 @@ func TestHandle_ExecTxa(t *testing.T) {
 	}
 }
 
-func TestHandle_Query(t *testing.T) {
+func TestDB_Query(t *testing.T) {
 	tests := []struct {
 		name     string
 		wantRows pgx.Rows
@@ -225,8 +214,8 @@ func TestHandle_Query(t *testing.T) {
 			defer Close()
 
 			//测试
-			accountDB := Conn(account)
-			rows, err := accountDB.Query("SELECT id,name FROM demo WHERE id < $1", 3)
+			db := Conn(account)
+			rows, err := db.Query("SELECT id,name FROM demo WHERE id < $1", 3)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Query() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -245,6 +234,44 @@ func TestHandle_Query(t *testing.T) {
 				return
 			}
 			for _, v := range res {
+				t.Logf("Query() gotRows = %#v", v)
+			}
+		})
+	}
+}
+
+func TestDB_QueryScan(t *testing.T) {
+	tests := []struct {
+		name     string
+		wantRows pgx.Rows
+		wantErr  bool
+	}{
+		{
+			name: "test query",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			//连接数据源
+			var account, access DBName
+			DataSource(&account, &access)
+			//关闭数据源
+			defer Close()
+
+			//测试
+			db := Conn(account)
+
+			type field struct {
+				Id   int64
+				Name string
+			}
+			result, err := QueryScan[field](db, "SELECT id,name FROM demo WHERE id < $1", 3)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Query() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			for _, v := range result {
 				t.Logf("Query() gotRows = %#v", v)
 			}
 		})

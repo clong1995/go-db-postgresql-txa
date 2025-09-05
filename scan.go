@@ -8,11 +8,11 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func Scan[T any](rows pgx.Rows) (res []T, err error) {
+func Scan[T any](rows pgx.Rows) (result []T, err error) {
 	var obj T
 	typ := reflect.TypeOf(obj)
 	if typ.Kind() == reflect.Struct {
-		if res, err = pgx.CollectRows[T](rows, pgx.RowToStructByPos[T]); err != nil {
+		if result, err = pgx.CollectRows[T](rows, pgx.RowToStructByPos[T]); err != nil {
 			log.Println(pcolor.Err("CollectRows error: %v", err))
 			return
 		}
@@ -22,7 +22,7 @@ func Scan[T any](rows pgx.Rows) (res []T, err error) {
 				log.Println(pcolor.Error(err))
 				return
 			}
-			res = append(res, obj)
+			result = append(result, obj)
 		}
 	}
 	return
