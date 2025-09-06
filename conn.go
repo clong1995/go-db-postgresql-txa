@@ -83,7 +83,7 @@ func (p Conn) Batch(query string, data [][]any) (err error) {
 func (p Conn) Copy(tableName string, columnNames []string, data [][]any) (rowsAffected int64, err error) {
 	if p.tx == nil {
 		err = errors.New("tx is nil")
-		log.Println(err)
+		log.Println(pcolor.Error(err))
 		return
 	}
 	table := pgx.Identifier{tableName}
