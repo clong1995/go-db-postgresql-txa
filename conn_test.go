@@ -27,8 +27,8 @@ func TestDB_Batch(t *testing.T) {
 			defer Close()
 
 			//启动事物
-			if err := Tx(account, func(db DB) (err error) {
-				if err = db.Batch(
+			if err := Tx(account, func(conn *Conn) (err error) {
+				if err = conn.Batch(
 					"INSERT INTO demo (id,name) VALUES($1,$2)",
 					[][]any{
 						{34, "hh"},
@@ -65,8 +65,8 @@ func TestDB_Copy(t *testing.T) {
 			defer Close()
 
 			//启动事物
-			if err := Tx(account, func(db DB) (err error) {
-				if _, err = db.Copy(
+			if err := Tx(account, func(conn *Conn) (err error) {
+				if _, err = conn.Copy(
 					"demo",
 					[]string{"id", "name"},
 					[][]any{
@@ -105,9 +105,9 @@ func TestDB_Exec(t *testing.T) {
 			defer Close()
 
 			//测试
-			db := Conn(account)
+			conn := NewConn(account)
 
-			if _, err := db.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 31, "ee"); (err != nil) != tt.wantErr {
+			if _, err := conn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 31, "ee"); (err != nil) != tt.wantErr {
 				t.Errorf("Exec() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
@@ -133,15 +133,15 @@ func TestDB_ExecTx(t *testing.T) {
 			//关闭数据源
 			defer Close()
 
-			if err := Tx(account, func(db DB) (err error) {
+			if err := Tx(account, func(conn *Conn) (err error) {
 				//操作1
-				if _, err = db.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 31, "ee"); (err != nil) != tt.wantErr {
+				if _, err = conn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 31, "ee"); (err != nil) != tt.wantErr {
 					log.Println(err)
 					return
 				}
 
 				//操作2
-				if _, err = db.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 30, "ff"); (err != nil) != tt.wantErr {
+				if _, err = conn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 30, "ff"); (err != nil) != tt.wantErr {
 					log.Println(err)
 					return
 				}
@@ -173,15 +173,15 @@ func TestDB_ExecTxa(t *testing.T) {
 			//关闭数据源
 			defer Close()
 
-			if err := Tx2(account, access, func(accountDB, accessDB DB) (err error) {
+			if err := Tx2(account, access, func(accountConn, accessConn *Conn) (err error) {
 				//操作1
-				if _, err = accountDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 26, "z"); (err != nil) != tt.wantErr {
+				if _, err = accountConn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 26, "z"); (err != nil) != tt.wantErr {
 					log.Println(err)
 					return
 				}
 
 				//操作2
-				if _, err = accessDB.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 27, "aa"); (err != nil) != tt.wantErr {
+				if _, err = accessConn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 27, "aa"); (err != nil) != tt.wantErr {
 					log.Println(err)
 					return
 				}
@@ -214,8 +214,8 @@ func TestDB_Query(t *testing.T) {
 			defer Close()
 
 			//测试
-			db := Conn(account)
-			rows, err := db.Query("SELECT id,name FROM demo WHERE id < $1", 3)
+			conn := NewConn(account)
+			rows, err := conn.Query("SELECT id,name FROM demo WHERE id < $1", 3)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Query() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -259,13 +259,13 @@ func TestDB_QueryScan(t *testing.T) {
 			defer Close()
 
 			//测试
-			db := Conn(account)
+			conn := NewConn(account)
 
 			type field struct {
 				Id   int64
 				Name string
 			}
-			result, err := QueryScan[field](db, "SELECT id,name FROM demo WHERE id < $1", 3)
+			result, err := QueryScan[field](conn, "SELECT id,name FROM demo WHERE id < $1", 3)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Query() error = %v, wantErr %v", err, tt.wantErr)
 				return

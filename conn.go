@@ -11,16 +11,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type DB struct {
+type Conn struct {
 	tx   pgx.Tx
 	pool *pgxpool.Pool
 }
 
-func Conn(name DBName) DB {
-	return DB{pool: dataPool[name]}
+func NewConn(name DBName) *Conn {
+	return &Conn{pool: dataPool[name]}
 }
 
-func (p DB) Query(query string, args ...any) (rows pgx.Rows, err error) {
+func (p Conn) Query(query string, args ...any) (rows pgx.Rows, err error) {
 	if p.tx != nil {
 		if rows, err = p.tx.Query(context.Background(), query, args...); err != nil {
 			log.Println(pcolor.Error(err))
@@ -40,7 +40,7 @@ func (p DB) Query(query string, args ...any) (rows pgx.Rows, err error) {
 	return
 }
 
-func (p DB) Exec(query string, args ...any) (result pgconn.CommandTag, err error) {
+func (p Conn) Exec(query string, args ...any) (result pgconn.CommandTag, err error) {
 	if p.tx != nil {
 		if result, err = p.tx.Exec(context.Background(), query, args...); err != nil {
 			log.Println(pcolor.Error(err))
@@ -62,7 +62,7 @@ func (p DB) Exec(query string, args ...any) (result pgconn.CommandTag, err error
 	return
 }
 
-func (p DB) Batch(query string, data [][]any) (err error) {
+func (p Conn) Batch(query string, data [][]any) (err error) {
 	if p.tx == nil {
 		err = errors.New("tx is nil")
 		log.Println(pcolor.Error(err))
@@ -80,7 +80,7 @@ func (p DB) Batch(query string, data [][]any) (err error) {
 	return
 }
 
-func (p DB) Copy(tableName string, columnNames []string, data [][]any) (rowsAffected int64, err error) {
+func (p Conn) Copy(tableName string, columnNames []string, data [][]any) (rowsAffected int64, err error) {
 	if p.tx == nil {
 		err = errors.New("tx is nil")
 		log.Println(err)
@@ -100,7 +100,7 @@ func (p DB) Copy(tableName string, columnNames []string, data [][]any) (rowsAffe
 }
 
 // QueryScan 自动扫描结果并关闭rows，对 DB.Query 的包装
-func QueryScan[T any](db DB, query string, args ...any) (result []T, err error) {
+func QueryScan[T any](db *Conn, query string, args ...any) (result []T, err error) {
 	rows, err := db.Query(query, args...)
 	if err != nil {
 		log.Println(pcolor.Error(err))
