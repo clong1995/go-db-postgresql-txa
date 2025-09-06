@@ -27,21 +27,28 @@ func TestDB_Batch(t *testing.T) {
 			defer Close()
 
 			//启动事物
-			if err := Tx(account, func(conn *Conn) (err error) {
-				if err = conn.Batch(
-					"INSERT INTO demo (id,name) VALUES($1,$2)",
-					[][]any{
-						{34, "hh"},
-						{35, "ii"},
-					},
-				); err != nil {
-					log.Println(err)
-					return
-				}
+			conn, commit, err := Tx(account)
+			if err != nil {
+				log.Println(err)
 				return
-			}); (err != nil) != tt.wantErr {
+			}
+			defer commit(err)
+
+			if err = conn.Batch(
+				"INSERT INTO demo (id,name) VALUES($1,$2)",
+				[][]any{
+					{34, "hh"},
+					{35, "ii"},
+				},
+			); err != nil {
+				log.Println(err)
+				return
+			}
+
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Batch() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
 		})
 	}
 }
@@ -65,20 +72,26 @@ func TestDB_Copy(t *testing.T) {
 			defer Close()
 
 			//启动事物
-			if err := Tx(account, func(conn *Conn) (err error) {
-				if _, err = conn.Copy(
-					"demo",
-					[]string{"id", "name"},
-					[][]any{
-						{32, "ff"},
-						{33, "gg"},
-					},
-				); err != nil {
-					log.Println(err)
-					return
-				}
+			conn, commit, err := Tx(account)
+			if err != nil {
+				log.Println(err)
 				return
-			}); (err != nil) != tt.wantErr {
+			}
+			defer commit(err)
+
+			if _, err = conn.Copy(
+				"demo",
+				[]string{"id", "name"},
+				[][]any{
+					{32, "ff"},
+					{33, "gg"},
+				},
+			); err != nil {
+				log.Println(err)
+				return
+			}
+
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Copy() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
@@ -133,21 +146,27 @@ func TestDB_ExecTx(t *testing.T) {
 			//关闭数据源
 			defer Close()
 
-			if err := Tx(account, func(conn *Conn) (err error) {
-				//操作1
-				if _, err = conn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 31, "ee"); (err != nil) != tt.wantErr {
-					log.Println(err)
-					return
-				}
-
-				//操作2
-				if _, err = conn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 30, "ff"); (err != nil) != tt.wantErr {
-					log.Println(err)
-					return
-				}
-
+			//启动事物
+			conn, commit, err := Tx(account)
+			if err != nil {
+				log.Println(err)
 				return
-			}); (err != nil) != tt.wantErr {
+			}
+			defer commit(err)
+
+			//操作1
+			if _, err = conn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 31, "ee"); (err != nil) != tt.wantErr {
+				log.Println(err)
+				return
+			}
+
+			//操作2
+			if _, err = conn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 30, "ff"); (err != nil) != tt.wantErr {
+				log.Println(err)
+				return
+			}
+
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Exec() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
@@ -173,21 +192,27 @@ func TestDB_ExecTxa(t *testing.T) {
 			//关闭数据源
 			defer Close()
 
-			if err := Tx2(account, access, func(accountConn, accessConn *Conn) (err error) {
-				//操作1
-				if _, err = accountConn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 26, "z"); (err != nil) != tt.wantErr {
-					log.Println(err)
-					return
-				}
-
-				//操作2
-				if _, err = accessConn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 27, "aa"); (err != nil) != tt.wantErr {
-					log.Println(err)
-					return
-				}
-
+			//启动事物
+			accountConn, accessConn, commit, err := Tx2(account, access)
+			if err != nil {
+				log.Println(err)
 				return
-			}); (err != nil) != tt.wantErr {
+			}
+			defer commit(err)
+
+			//操作1
+			if _, err = accountConn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 26, "z"); (err != nil) != tt.wantErr {
+				log.Println(err)
+				return
+			}
+
+			//操作2
+			if _, err = accessConn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 27, "aa"); (err != nil) != tt.wantErr {
+				log.Println(err)
+				return
+			}
+
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Exec() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
