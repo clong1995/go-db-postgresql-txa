@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"log"
 	"strconv"
 	"strings"
@@ -18,11 +19,19 @@ func DataSource(dbNames ...*DBName) {
 	if err != nil {
 		log.Fatalln(pcolor.Error(err))
 	}
+
+	dataSource := config.Value("DATASOURCE")
+	ds := strings.Split(dataSource, ",")
+
+	if len(dbNames) != len(ds) {
+		err = errors.New("db names != data source")
+		log.Fatalln(pcolor.Error(err))
+	}
+
 	maxConn := int32(num)
 
 	dataPool = make(map[DBName]*pgxpool.Pool)
-	ds := config.Value("DATASOURCE")
-	for i, v := range strings.Split(ds, ",") {
+	for i, v := range ds {
 		var conf *pgxpool.Config
 		if conf, err = pgxpool.ParseConfig(v); err != nil {
 			log.Fatalln(pcolor.Error(err))
