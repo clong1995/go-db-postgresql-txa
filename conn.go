@@ -99,15 +99,30 @@ func (p Conn) Copy(tableName string, columnNames []string, data [][]any) (rowsAf
 	return
 }
 
-// QueryScan 自动扫描结果并关闭rows，对 DB.Query 的包装
-func QueryScan[T any](db *Conn, query string, args ...any) (result []T, err error) {
-	rows, err := db.Query(query, args...)
+// QueryScan 自动扫描结果并关闭rows，对 Conn.Query 的包装
+func QueryScan[T any](conn *Conn, query string, args ...any) (result []T, err error) {
+	rows, err := conn.Query(query, args...)
 	if err != nil {
 		log.Println(pcolor.Error(err))
 		return
 	}
 	defer rows.Close()
 	if result, err = Scan[T](rows); err != nil {
+		log.Println(pcolor.Error(err))
+		return
+	}
+	return
+}
+
+// QueryScanOne 自动扫描结果并关闭rows，对 Conn.Query 的包装
+func QueryScanOne[T any](conn *Conn, query string, args ...any) (result T, err error) {
+	rows, err := conn.Query(query, args...)
+	if err != nil {
+		log.Println(pcolor.Error(err))
+		return
+	}
+	defer rows.Close()
+	if result, err = ScanOne[T](rows); err != nil {
 		log.Println(pcolor.Error(err))
 		return
 	}

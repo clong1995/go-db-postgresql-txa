@@ -27,3 +27,22 @@ func Scan[T any](rows pgx.Rows) (result []T, err error) {
 	}
 	return
 }
+
+func ScanOne[T any](rows pgx.Rows) (result T, err error) {
+	var obj T
+	typ := reflect.TypeOf(obj)
+	if typ.Kind() == reflect.Struct {
+		if result, err = pgx.CollectOneRow[T](rows, pgx.RowToStructByPos[T]); err != nil {
+			log.Println(pcolor.Err("CollectRows error: %v", err))
+			return
+		}
+	} else {
+		for rows.Next() {
+			if err = rows.Scan(&result); err != nil {
+				log.Println(pcolor.Error(err))
+				return
+			}
+		}
+	}
+	return
+}
