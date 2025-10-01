@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"errors"
-	"log"
 	"strconv"
 	"strings"
 
@@ -17,7 +16,7 @@ var dataPool map[DBName]*pgxpool.Pool
 func DataSource(dbNames ...*DBName) {
 	num, err := strconv.ParseInt(config.Value("MAXCONNS"), 10, 32)
 	if err != nil {
-		log.Fatalln(pcolor.Error(err))
+		pcolor.PrintFatal(err.Error())
 	}
 
 	dataSource := config.Value("DATASOURCE")
@@ -25,7 +24,7 @@ func DataSource(dbNames ...*DBName) {
 
 	if len(dbNames) != len(ds) {
 		err = errors.New("db names != data source")
-		log.Fatalln(pcolor.Error(err))
+		pcolor.PrintFatal(err.Error())
 	}
 
 	maxConn := int32(num)
@@ -34,30 +33,30 @@ func DataSource(dbNames ...*DBName) {
 	for i, v := range ds {
 		var conf *pgxpool.Config
 		if conf, err = pgxpool.ParseConfig(v); err != nil {
-			log.Fatalln(pcolor.Error(err))
+			pcolor.PrintFatal(err.Error())
 		}
 		conf.MaxConns = maxConn
 
 		var pool *pgxpool.Pool
 		if pool, err = pgxpool.NewWithConfig(context.Background(), conf); err != nil {
-			log.Fatalln(pcolor.Error(err))
+			pcolor.PrintFatal(err.Error())
 		}
 
 		if err = pool.Ping(context.Background()); err != nil {
-			log.Fatalln(pcolor.Error(err))
+			pcolor.PrintFatal(err.Error())
 		}
 		database := DBName(conf.ConnConfig.Database)
 		dataPool[database] = pool
 
 		*dbNames[i] = database
 
-		log.Println(pcolor.Succ("[PostgreSQL] conn %v", database))
+		pcolor.PrintSucc("[PostgreSQL] conn %v", database)
 	}
 }
 
 func Close() {
 	for k, v := range dataPool {
 		v.Close()
-		log.Println(pcolor.Succ("[PostgreSQL] %v closed", k))
+		pcolor.PrintSucc("[PostgreSQL] %v closed", k)
 	}
 }

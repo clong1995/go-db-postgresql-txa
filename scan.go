@@ -1,7 +1,6 @@
 package db
 
 import (
-	"log"
 	"reflect"
 
 	pcolor "github.com/clong1995/go-ansi-color"
@@ -13,13 +12,13 @@ func Scan[T any](rows pgx.Rows) (result []T, err error) {
 	typ := reflect.TypeOf(obj)
 	if typ.Kind() == reflect.Struct {
 		if result, err = pgx.CollectRows[T](rows, pgx.RowToStructByPos[T]); err != nil {
-			log.Println(pcolor.Err("CollectRows error: %v", err))
+			pcolor.PrintError(err)
 			return
 		}
 	} else {
 		for rows.Next() {
 			if err = rows.Scan(&obj); err != nil {
-				log.Println(pcolor.Error(err))
+				pcolor.PrintError(err)
 				return
 			}
 			result = append(result, obj)
@@ -33,13 +32,13 @@ func ScanOne[T any](rows pgx.Rows) (result T, err error) {
 	typ := reflect.TypeOf(obj)
 	if typ.Kind() == reflect.Struct {
 		if result, err = pgx.CollectOneRow[T](rows, pgx.RowToStructByPos[T]); err != nil {
-			log.Println(pcolor.Err("CollectRows error: %v", err))
+			pcolor.PrintError(err)
 			return
 		}
 	} else {
 		for rows.Next() {
 			if err = rows.Scan(&result); err != nil {
-				log.Println(pcolor.Error(err))
+				pcolor.PrintError(err)
 				return
 			}
 		}

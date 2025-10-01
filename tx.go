@@ -3,7 +3,6 @@ package db
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	pcolor "github.com/clong1995/go-ansi-color"
 	"golang.org/x/net/context"
@@ -19,11 +18,11 @@ func MultiTx(dbNames ...DBName) (connects []*Conn, commit func(err error), err e
 			}
 			if err != nil {
 				if rollbackErr := d.tx.Rollback(context.Background()); rollbackErr != nil {
-					log.Println(pcolor.Error(rollbackErr))
+					pcolor.PrintError(rollbackErr)
 				}
 			} else {
 				if commitErr := d.tx.Commit(context.Background()); commitErr != nil {
-					log.Println(pcolor.Error(commitErr))
+					pcolor.PrintError(commitErr)
 				}
 			}
 		}
@@ -33,13 +32,13 @@ func MultiTx(dbNames ...DBName) (connects []*Conn, commit func(err error), err e
 		if p == nil {
 			err = errors.New(fmt.Sprintf("db[%s] is not exist", v))
 			commit(err)
-			log.Println(pcolor.Error(err))
+			pcolor.PrintError(err)
 			return
 		}
 		connects[i] = &Conn{}
 		if connects[i].tx, err = p.Begin(context.Background()); err != nil {
 			commit(err)
-			log.Println(pcolor.Error(err))
+			pcolor.PrintError(err)
 			return
 		}
 	}
