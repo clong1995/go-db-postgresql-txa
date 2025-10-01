@@ -3,7 +3,7 @@ module github.com/clong1995/go-db-postgresql-txa
 go 1.25
 
 require (
-	github.com/clong1995/go-ansi-color v0.0.0-20250928033421-b058189778d1
+	github.com/clong1995/go-ansi-color v0.0.0-20251001144130-74afe030c906
 	github.com/clong1995/go-config v0.0.0-20250904031006-87e9919cba93
 	github.com/jackc/pgx/v5 v5.7.6
 	golang.org/x/net v0.44.0
