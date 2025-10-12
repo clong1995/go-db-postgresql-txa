@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	pcolor "github.com/clong1995/go-ansi-color"
+	"github.com/clong1995/go-ansi-color"
 	"github.com/clong1995/go-config"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -50,13 +50,13 @@ func DataSource(dbNames ...*DBName) {
 
 		*dbNames[i] = database
 
-		pcolor.PrintSucc("[PostgreSQL] conn %v", database)
+		pcolor.PrintSucc("conn %v", database)
 	}
 }
 
 func Close() {
 	for k, v := range dataPool {
 		v.Close()
-		pcolor.PrintSucc("[PostgreSQL] %v closed", k)
+		pcolor.PrintSucc("%v closed", k)
 	}
 }
