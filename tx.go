@@ -5,41 +5,55 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/net/context"
 )
 
 // MultiTx 但数据库事物和跨数据库事物
-func MultiTx(dbNames ...DBName) (connects []*Conn, commit func(err error), err error) {
-	connects = make([]*Conn, len(dbNames))
-	commit = func(err error) {
-		for _, d := range connects {
-			if d == nil || d.tx == nil {
+func MultiTx(dbNames ...DBName) (txConns []TxConn, commit func(err error), err error) {
+	txConns = make([]TxConn, len(dbNames))
+	for i, v := range dbNames {
+		p := databasePool[v]
+		if p == nil {
+			err = errors.New(fmt.Sprintf("db[%s] is not exist", v))
+			log.Println(err)
+			break
+		}
+		var tx pgx.Tx
+		if tx, err = p.Begin(context.Background()); err != nil {
+			log.Println(err)
+			break
+		}
+		txConns[i] = TxConn{
+			tx: tx,
+		}
+	}
+
+	if err != nil {
+		//回滚
+		for _, txConn := range txConns {
+			if txConn.tx == nil {
 				continue
 			}
-			if err != nil {
-				if rollbackErr := d.tx.Rollback(context.Background()); rollbackErr != nil {
+			if rollbackErr := txConn.tx.Rollback(context.Background()); rollbackErr != nil {
+				log.Println(rollbackErr)
+			}
+		}
+		return
+	}
+
+	commit = func(err error) {
+		for _, txConn := range txConns {
+			if txConn.tx == nil || err != nil {
+				if rollbackErr := txConn.tx.Rollback(context.Background()); rollbackErr != nil {
 					log.Println(rollbackErr)
 				}
 			} else {
-				if commitErr := d.tx.Commit(context.Background()); commitErr != nil {
+				if commitErr := txConn.tx.Commit(context.Background()); commitErr != nil {
 					log.Println(commitErr)
 				}
 			}
-		}
-	}
-	for i, v := range dbNames {
-		p := dataPool[v]
-		if p == nil {
-			err = errors.New(fmt.Sprintf("db[%s] is not exist", v))
-			commit(err)
-			log.Println(err)
-			return
-		}
-		connects[i] = &Conn{}
-		if connects[i].tx, err = p.Begin(context.Background()); err != nil {
-			commit(err)
-			log.Println(err)
-			return
 		}
 	}
 
@@ -47,51 +61,149 @@ func MultiTx(dbNames ...DBName) (connects []*Conn, commit func(err error), err e
 }
 
 // Tx 对单个数据库使用 MultiTx 的简化
-func Tx(dbName DBName) (conn *Conn, commit func(err error), err error) {
-	connects, commit, err := MultiTx(dbName)
+func Tx(dbName DBName) (txConn TxConn, commit func(err error), err error) {
+	txConns, commit, err := MultiTx(dbName)
 	if err != nil {
 		return
 	}
-	conn = connects[0]
+	txConn = txConns[0]
 	return
 }
 
 // Tx2 对2个数据库使用 MultiTx 的简化
-func Tx2(dbName1, dbName2 DBName) (conn1, conn2 *Conn, commit func(err error), err error) {
-	connects, commit, err := MultiTx(dbName1, dbName2)
+func Tx2(dbName1, dbName2 DBName) (txConn1, txConn2 TxConn, commit func(err error), err error) {
+	txConns, commit, err := MultiTx(dbName1, dbName2)
 	if err != nil {
 		return
 	}
-	conn1, conn2 = connects[0], connects[1]
+	txConn1, txConn2 = txConns[0], txConns[1]
 	return
 }
 
 // Tx3 对3个数据库使用 MultiTx 的简化
-func Tx3(dbName1, dbName2, dbName3 DBName) (conn1, conn2, conn3 *Conn, commit func(err error), err error) {
-	connects, commit, err := MultiTx(dbName1, dbName2, dbName3)
+func Tx3(dbName1, dbName2, dbName3 DBName) (txConn1, txConn2, txConn3 TxConn, commit func(err error), err error) {
+	txConns, commit, err := MultiTx(dbName1, dbName2, dbName3)
 	if err != nil {
 		return
 	}
-	conn1, conn2, conn3 = connects[0], connects[1], connects[2]
+	txConn1, txConn2, txConn3 = txConns[0], txConns[1], txConns[2]
 	return
 }
 
 // Tx4 对4个数据库使用 MultiTx 的简化
-func Tx4(dbName1, dbName2, dbName3, dbName4 DBName) (conn1, conn2, conn3, conn4 *Conn, commit func(err error), err error) {
-	connects, commit, err := MultiTx(dbName1, dbName2, dbName3, dbName4)
+func Tx4(dbName1, dbName2, dbName3, dbName4 DBName) (txConn1, txConn2, txConn3, txConn4 TxConn, commit func(err error), err error) {
+	txConns, commit, err := MultiTx(dbName1, dbName2, dbName3, dbName4)
 	if err != nil {
 		return
 	}
-	conn1, conn2, conn3, conn4 = connects[0], connects[1], connects[2], connects[3]
+	txConn1, txConn2, txConn3, txConn4 = txConns[0], txConns[1], txConns[2], txConns[3]
 	return
 }
 
 // Tx5 对5个数据库使用 MultiTx 的简化
-func Tx5(dbName1, dbName2, dbName3, dbName4, dbName5 DBName) (conn1, conn2, conn3, conn4, conn5 *Conn, commit func(err error), err error) {
-	connects, commit, err := MultiTx(dbName1, dbName2, dbName3, dbName4, dbName5)
+func Tx5(dbName1, dbName2, dbName3, dbName4, dbName5 DBName) (txConn1, txConn2, txConn3, txConn4, txConn5 TxConn, commit func(err error), err error) {
+	txConns, commit, err := MultiTx(dbName1, dbName2, dbName3, dbName4, dbName5)
 	if err != nil {
 		return
 	}
-	conn1, conn2, conn3, conn4, conn5 = connects[0], connects[1], connects[2], connects[3], connects[4]
+	txConn1, txConn2, txConn3, txConn4, txConn5 = txConns[0], txConns[1], txConns[2], txConns[3], txConns[4]
+	return
+}
+
+type TxConn struct {
+	tx pgx.Tx
+}
+
+func (p TxConn) Query(query string, args ...any) (rows pgx.Rows, err error) {
+	if p.tx == nil {
+		err = errors.New("tx is nil")
+		log.Println(err)
+		return
+	}
+	if rows, err = p.tx.Query(context.Background(), query, args...); err != nil {
+		log.Println(err)
+		return
+	}
+	return
+}
+
+func (p TxConn) Exec(query string, args ...any) (result pgconn.CommandTag, err error) {
+	if p.tx == nil {
+		err = errors.New("tx is nil")
+		log.Println(err)
+		return
+	}
+
+	if result, err = p.tx.Exec(context.Background(), query, args...); err != nil {
+		log.Println(err)
+		return
+	}
+	return
+}
+
+func (p TxConn) Batch(query string, data [][]any) (err error) {
+	if p.tx == nil {
+		err = errors.New("tx is nil")
+		log.Println(err)
+		return
+	}
+	batch := &pgx.Batch{}
+	for _, v := range data {
+		_ = batch.Queue(query, v...)
+	}
+	br := p.tx.SendBatch(context.Background(), batch)
+	if err = br.Close(); err != nil {
+		log.Println(err)
+		return
+	}
+	return
+}
+
+func (p TxConn) Copy(tableName string, columnNames []string, data [][]any) (rowsAffected int64, err error) {
+	if p.tx == nil {
+		err = errors.New("tx is nil")
+		log.Println(err)
+		return
+	}
+	table := pgx.Identifier{tableName}
+	if rowsAffected, err = p.tx.CopyFrom(
+		context.Background(),
+		table,
+		columnNames,
+		pgx.CopyFromRows(data),
+	); err != nil {
+		log.Println(err)
+		return
+	}
+	return
+}
+
+// TxQueryScan 自动扫描结果并关闭rows，对 Conn.Query 的包装
+func TxQueryScan[T any](txConn TxConn, query string, args ...any) (result []T, err error) {
+	rows, err := txConn.Query(query, args...)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer rows.Close()
+	if result, err = Scan[T](rows); err != nil {
+		log.Println(err)
+		return
+	}
+	return
+}
+
+// TxQueryScanOne 自动扫描结果并关闭rows，对 Conn.Query 的包装
+func TxQueryScanOne[T any](txConn TxConn, query string, args ...any) (result T, err error) {
+	rows, err := txConn.Query(query, args...)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer rows.Close()
+	if result, err = ScanOne[T](rows); err != nil {
+		log.Println(err)
+		return
+	}
 	return
 }

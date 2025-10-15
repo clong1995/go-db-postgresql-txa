@@ -21,8 +21,7 @@ func TestDB_Batch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			//连接数据源
-			var account, access DBName
-			DataSource(&account, &access)
+			account, _ := DataSource2()
 			//关闭数据源
 			defer Close()
 
@@ -66,8 +65,7 @@ func TestDB_Copy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			//连接数据源
-			var account, access DBName
-			DataSource(&account, &access)
+			account, _ := DataSource2()
 			//关闭数据源
 			defer Close()
 
@@ -112,8 +110,7 @@ func TestDB_Exec(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			//连接数据源
-			var account, access DBName
-			DataSource(&account, &access)
+			account, _ := DataSource2()
 			//关闭数据源
 			defer Close()
 
@@ -141,13 +138,12 @@ func TestDB_ExecTx(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			//连接数据源
-			var account, access DBName
-			DataSource(&account, &access)
+			account, access := DataSource2()
 			//关闭数据源
 			defer Close()
 
 			//启动事物
-			conn, commit, err := Tx(account)
+			accountTx, accessTx, commit, err := Tx2(account, access)
 			if err != nil {
 				log.Println(err)
 				return
@@ -155,59 +151,13 @@ func TestDB_ExecTx(t *testing.T) {
 			defer commit(err)
 
 			//操作1
-			if _, err = conn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 31, "ee"); (err != nil) != tt.wantErr {
+			if _, err = accountTx.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 31, "ee"); (err != nil) != tt.wantErr {
 				log.Println(err)
 				return
 			}
 
 			//操作2
-			if _, err = conn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 30, "ff"); (err != nil) != tt.wantErr {
-				log.Println(err)
-				return
-			}
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Exec() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-		})
-	}
-}
-
-func TestDB_ExecTxa(t *testing.T) {
-	tests := []struct {
-		name       string
-		wantResult pgconn.CommandTag
-		wantErr    bool
-	}{
-		{
-			name: "test exec txa",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			//连接数据源
-			var account, access DBName
-			DataSource(&account, &access)
-			//关闭数据源
-			defer Close()
-
-			//启动事物
-			accountConn, accessConn, commit, err := Tx2(account, access)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			defer commit(err)
-
-			//操作1
-			if _, err = accountConn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 26, "z"); (err != nil) != tt.wantErr {
-				log.Println(err)
-				return
-			}
-
-			//操作2
-			if _, err = accessConn.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 27, "aa"); (err != nil) != tt.wantErr {
+			if _, err = accessTx.Exec(`INSERT INTO demo (id,name) VALUES($1,$2)`, 30, "ff"); (err != nil) != tt.wantErr {
 				log.Println(err)
 				return
 			}
@@ -233,8 +183,7 @@ func TestDB_Query(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			//连接数据源
-			var account, access DBName
-			DataSource(&account, &access)
+			account, _ := DataSource2()
 			//关闭数据源
 			defer Close()
 
@@ -278,8 +227,7 @@ func TestDB_QueryScan(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			//连接数据源
-			var account, access DBName
-			DataSource(&account, &access)
+			account, _ := DataSource2()
 			//关闭数据源
 			defer Close()
 
@@ -290,7 +238,7 @@ func TestDB_QueryScan(t *testing.T) {
 				Id   int64
 				Name string
 			}
-			result, err := QueryScan[field](conn, "SELECT id,name FROM demo WHERE id < $1", 3)
+			result, err := ConnQueryScan[field](conn, "SELECT id,name FROM demo WHERE id < $1", 3)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Query() error = %v, wantErr %v", err, tt.wantErr)
 				return

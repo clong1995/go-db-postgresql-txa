@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"strings"
 
@@ -11,51 +10,92 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var dataPool map[DBName]*pgxpool.Pool
+var databasePool map[DBName]*pgxpool.Pool
 
-func DataSource(dbNames ...*DBName) {
-	num, err := strconv.ParseInt(config.Value("MAXCONNS"), 10, 32)
-	if err != nil {
-		pcolor.PrintFatal(err.Error())
-	}
-
-	dataSource := config.Value("DATASOURCE")
-	ds := strings.Split(dataSource, ",")
-
-	if len(dbNames) != len(ds) {
-		err = errors.New("db names != data source")
-		pcolor.PrintFatal(err.Error())
-	}
-
-	maxConn := int32(num)
-
-	dataPool = make(map[DBName]*pgxpool.Pool)
-	for i, v := range ds {
-		var conf *pgxpool.Config
-		if conf, err = pgxpool.ParseConfig(v); err != nil {
+func DataSource() (dbNames []DBName) {
+	configMaxConns := config.Value("MAXCONNS")
+	var maxConn int32
+	if configMaxConns == "" {
+		maxConn = 10
+	} else {
+		i, err := strconv.ParseInt(configMaxConns, 10, 32)
+		if err != nil {
 			pcolor.PrintFatal(err.Error())
+			return
+		}
+		maxConn = int32(i)
+	}
+
+	configDataSource := config.Value("DATASOURCE")
+	dataSource := strings.Split(configDataSource, ",")
+
+	dbNames = make([]DBName, len(dataSource))
+	databasePool = make(map[DBName]*pgxpool.Pool)
+
+	for i, v := range dataSource {
+		conf, err := pgxpool.ParseConfig(v)
+		if err != nil {
+			pcolor.PrintFatal(err.Error())
+			return
 		}
 		conf.MaxConns = maxConn
 
-		var pool *pgxpool.Pool
-		if pool, err = pgxpool.NewWithConfig(context.Background(), conf); err != nil {
+		pool, err := pgxpool.NewWithConfig(context.Background(), conf)
+		if err != nil {
 			pcolor.PrintFatal(err.Error())
+			return
 		}
 
 		if err = pool.Ping(context.Background()); err != nil {
 			pcolor.PrintFatal(err.Error())
+			return
 		}
-		database := DBName(conf.ConnConfig.Database)
-		dataPool[database] = pool
+		dbName := DBName(conf.ConnConfig.Database)
+		databasePool[dbName] = pool
 
-		*dbNames[i] = database
+		dbNames[i] = dbName
 
-		pcolor.PrintSucc("conn %v", database)
+		pcolor.PrintSucc("conn %v", dbName)
 	}
+	return
+}
+
+func DataSource2() (dbName1, dbName2 DBName) {
+	dbnames := DataSource()
+	if len(dbnames) != 2 {
+		pcolor.PrintFatal("data source should contain 2 db names")
+		return
+	}
+	return dbnames[0], dbnames[1]
+}
+
+func DataSource3() (dbName1, dbName2, dbName3 DBName) {
+	dbnames := DataSource()
+	if len(dbnames) != 3 {
+		pcolor.PrintFatal("data source should contain 3 db names")
+		return
+	}
+	return dbnames[0], dbnames[1], dbnames[2]
+}
+func DataSource4() (dbName1, dbName2, dbName3, dbName4 DBName) {
+	dbnames := DataSource()
+	if len(dbnames) != 4 {
+		pcolor.PrintFatal("data source should contain 4 db names")
+		return
+	}
+	return dbnames[0], dbnames[1], dbnames[2], dbnames[3]
+}
+func DataSource5() (dbName1, dbName2, dbName3, dbName4, dbName5 DBName) {
+	dbnames := DataSource()
+	if len(dbnames) != 5 {
+		pcolor.PrintFatal("data source should contain 5 db names")
+		return
+	}
+	return dbnames[0], dbnames[1], dbnames[2], dbnames[3], dbnames[4]
 }
 
 func Close() {
-	for k, v := range dataPool {
+	for k, v := range databasePool {
 		v.Close()
 		pcolor.PrintSucc("%v closed", k)
 	}
