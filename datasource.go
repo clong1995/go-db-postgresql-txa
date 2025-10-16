@@ -11,6 +11,7 @@ import (
 )
 
 var databasePool map[DBName]*pgxpool.Pool
+var prefix = "postgresql-txa"
 
 func DataSource() (dbNames []DBName) {
 	configMaxConns := config.Value("MAXCONNS")
@@ -20,7 +21,7 @@ func DataSource() (dbNames []DBName) {
 	} else {
 		i, err := strconv.ParseInt(configMaxConns, 10, 32)
 		if err != nil {
-			pcolor.PrintFatal(err.Error())
+			pcolor.PrintFatal(prefix, err.Error())
 			return
 		}
 		maxConn = int32(i)
@@ -35,19 +36,19 @@ func DataSource() (dbNames []DBName) {
 	for i, v := range dataSource {
 		conf, err := pgxpool.ParseConfig(v)
 		if err != nil {
-			pcolor.PrintFatal(err.Error())
+			pcolor.PrintFatal(prefix, err.Error())
 			return
 		}
 		conf.MaxConns = maxConn
 
 		pool, err := pgxpool.NewWithConfig(context.Background(), conf)
 		if err != nil {
-			pcolor.PrintFatal(err.Error())
+			pcolor.PrintFatal(prefix, err.Error())
 			return
 		}
 
 		if err = pool.Ping(context.Background()); err != nil {
-			pcolor.PrintFatal(err.Error())
+			pcolor.PrintFatal(prefix, err.Error())
 			return
 		}
 		dbName := DBName(conf.ConnConfig.Database)
@@ -55,7 +56,7 @@ func DataSource() (dbNames []DBName) {
 
 		dbNames[i] = dbName
 
-		pcolor.PrintSucc("conn %v", dbName)
+		pcolor.PrintSucc(prefix, "conn %v", dbName)
 	}
 	return
 }
@@ -63,7 +64,7 @@ func DataSource() (dbNames []DBName) {
 func DataSource2() (dbName1, dbName2 DBName) {
 	dbnames := DataSource()
 	if len(dbnames) != 2 {
-		pcolor.PrintFatal("data source should contain 2 db names")
+		pcolor.PrintFatal(prefix, "data source should contain 2 db names")
 		return
 	}
 	return dbnames[0], dbnames[1]
@@ -72,7 +73,7 @@ func DataSource2() (dbName1, dbName2 DBName) {
 func DataSource3() (dbName1, dbName2, dbName3 DBName) {
 	dbnames := DataSource()
 	if len(dbnames) != 3 {
-		pcolor.PrintFatal("data source should contain 3 db names")
+		pcolor.PrintFatal(prefix, "data source should contain 3 db names")
 		return
 	}
 	return dbnames[0], dbnames[1], dbnames[2]
@@ -80,7 +81,7 @@ func DataSource3() (dbName1, dbName2, dbName3 DBName) {
 func DataSource4() (dbName1, dbName2, dbName3, dbName4 DBName) {
 	dbnames := DataSource()
 	if len(dbnames) != 4 {
-		pcolor.PrintFatal("data source should contain 4 db names")
+		pcolor.PrintFatal(prefix, "data source should contain 4 db names")
 		return
 	}
 	return dbnames[0], dbnames[1], dbnames[2], dbnames[3]
@@ -88,7 +89,7 @@ func DataSource4() (dbName1, dbName2, dbName3, dbName4 DBName) {
 func DataSource5() (dbName1, dbName2, dbName3, dbName4, dbName5 DBName) {
 	dbnames := DataSource()
 	if len(dbnames) != 5 {
-		pcolor.PrintFatal("data source should contain 5 db names")
+		pcolor.PrintFatal(prefix, "data source should contain 5 db names")
 		return
 	}
 	return dbnames[0], dbnames[1], dbnames[2], dbnames[3], dbnames[4]
@@ -97,6 +98,6 @@ func DataSource5() (dbName1, dbName2, dbName3, dbName4, dbName5 DBName) {
 func Close() {
 	for k, v := range databasePool {
 		v.Close()
-		pcolor.PrintSucc("%v closed", k)
+		pcolor.PrintSucc(prefix, "%v closed", k)
 	}
 }
