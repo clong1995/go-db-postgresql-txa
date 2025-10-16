@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/clong1995/go-ansi-color v0.0.0-20251016014428-61ea4bba5de6
-	github.com/clong1995/go-config v0.0.0-20251015172612-ff975190cb1d
+	github.com/clong1995/go-config v0.0.0-20251016024738-1d0e21986853
 	github.com/jackc/pgx/v5 v5.7.6
 	golang.org/x/net v0.46.0
 )

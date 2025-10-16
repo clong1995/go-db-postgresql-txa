@@ -12,6 +12,8 @@ github.com/clong1995/go-config v0.0.0-20250904031006-87e9919cba93 h1:Ci9gGSst+nV
 github.com/clong1995/go-config v0.0.0-20250904031006-87e9919cba93/go.mod h1:eQ2K6h/gc2yX9BBtm4/ExXPVlOsedRlXsDBJnEKjhts=
 github.com/clong1995/go-config v0.0.0-20251015172612-ff975190cb1d h1:lUtwcYfR+4jC9aVhQxLJg74PKuqS9jnGQW8xMgtvS7A=
 github.com/clong1995/go-config v0.0.0-20251015172612-ff975190cb1d/go.mod h1:pjNsPh7n2Y0IC57nzULRMxa5cymD4JjMHLBABTBgs+Q=
+github.com/clong1995/go-config v0.0.0-20251016024738-1d0e21986853 h1:BqfMb/U39Ylamq7z1udkt4UvyLmfLMkw6lUjOtlJ+6Y=
+github.com/clong1995/go-config v0.0.0-20251016024738-1d0e21986853/go.mod h1:z5is5krC0JXYgIXQ2ZwEsETEL1Wrb/fYuT1YXTTmGB4=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
