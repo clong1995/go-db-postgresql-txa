@@ -13,7 +13,7 @@ import (
 var databasePool map[DBName]*pgxpool.Pool
 var prefix = "postgresql-txa"
 
-func DataSource() (dbNames []DBName) {
+func MultiDataSource() (dbNames []DBName) {
 	configMaxConns := config.Value("MAXCONNS")
 	var maxConn int32
 	if configMaxConns == "" {
@@ -61,8 +61,17 @@ func DataSource() (dbNames []DBName) {
 	return
 }
 
+func DataSource() (dbName DBName) {
+	dbnames := MultiDataSource()
+	if len(dbnames) != 1 {
+		pcolor.PrintFatal(prefix, "data source should contain 1 db names")
+		return
+	}
+	return dbnames[0]
+}
+
 func DataSource2() (dbName1, dbName2 DBName) {
-	dbnames := DataSource()
+	dbnames := MultiDataSource()
 	if len(dbnames) != 2 {
 		pcolor.PrintFatal(prefix, "data source should contain 2 db names")
 		return
@@ -71,7 +80,7 @@ func DataSource2() (dbName1, dbName2 DBName) {
 }
 
 func DataSource3() (dbName1, dbName2, dbName3 DBName) {
-	dbnames := DataSource()
+	dbnames := MultiDataSource()
 	if len(dbnames) != 3 {
 		pcolor.PrintFatal(prefix, "data source should contain 3 db names")
 		return
@@ -79,7 +88,7 @@ func DataSource3() (dbName1, dbName2, dbName3 DBName) {
 	return dbnames[0], dbnames[1], dbnames[2]
 }
 func DataSource4() (dbName1, dbName2, dbName3, dbName4 DBName) {
-	dbnames := DataSource()
+	dbnames := MultiDataSource()
 	if len(dbnames) != 4 {
 		pcolor.PrintFatal(prefix, "data source should contain 4 db names")
 		return
@@ -87,7 +96,7 @@ func DataSource4() (dbName1, dbName2, dbName3, dbName4 DBName) {
 	return dbnames[0], dbnames[1], dbnames[2], dbnames[3]
 }
 func DataSource5() (dbName1, dbName2, dbName3, dbName4, dbName5 DBName) {
-	dbnames := DataSource()
+	dbnames := MultiDataSource()
 	if len(dbnames) != 5 {
 		pcolor.PrintFatal(prefix, "data source should contain 5 db names")
 		return
