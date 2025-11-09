@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/clong1995/go-ansi-color"
 	"github.com/clong1995/go-config"
@@ -40,6 +41,8 @@ func MultiDataSource() (dbNames []DBName) {
 			return
 		}
 		conf.MaxConns = maxConn
+		conf.MinConns = 1
+		conf.MaxConnIdleTime = time.Minute * 30
 
 		pool, err := pgxpool.NewWithConfig(context.Background(), conf)
 		if err != nil {
