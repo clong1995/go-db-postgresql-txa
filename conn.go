@@ -61,8 +61,8 @@ func ConnQueryScan[T any](conn Conn, query string, args ...any) (result []T, err
 }
 
 // ConnQueryScanOne 自动扫描结果并关闭rows，对 Conn.Query 的包装
-func ConnQueryScanOne[T any](conn Conn, query string, args ...any) (result T, err error) {
-	rows, err := conn.Query(query, args...)
+func ConnQueryScanOne[T any](conn Conn, query string, args ...any) (result T, exists bool, err error) {
+	/*rows, err := conn.Query(query, args...)
 	if err != nil {
 		log.Println(err)
 		return
@@ -71,6 +71,16 @@ func ConnQueryScanOne[T any](conn Conn, query string, args ...any) (result T, er
 	if result, err = ScanOne[T](rows); err != nil {
 		log.Println(err)
 		return
+	}*/
+	scan, err := ConnQueryScan[T](conn, query, args...)
+	if err != nil {
+		log.Println(err)
+		return
 	}
+	if len(scan) == 0 {
+		return
+	}
+
+	result, exists = scan[0], true
 	return
 }

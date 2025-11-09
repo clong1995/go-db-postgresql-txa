@@ -194,8 +194,8 @@ func TxQueryScan[T any](txConn TxConn, query string, args ...any) (result []T, e
 }
 
 // TxQueryScanOne 自动扫描结果并关闭rows，对 Conn.Query 的包装
-func TxQueryScanOne[T any](txConn TxConn, query string, args ...any) (result T, err error) {
-	rows, err := txConn.Query(query, args...)
+func TxQueryScanOne[T any](txConn TxConn, query string, args ...any) (result T, exists bool, err error) {
+	/*rows, err := txConn.Query(query, args...)
 	if err != nil {
 		log.Println(err)
 		return
@@ -204,6 +204,15 @@ func TxQueryScanOne[T any](txConn TxConn, query string, args ...any) (result T, 
 	if result, err = ScanOne[T](rows); err != nil {
 		log.Println(err)
 		return
+	}*/
+	scan, err := TxQueryScan[T](txConn, query, args...)
+	if err != nil {
+		log.Println(err)
+		return
 	}
+	if len(scan) == 0 {
+		return
+	}
+	result, exists = scan[0], true
 	return
 }
