@@ -10,6 +10,7 @@ import (
 
 func Scan[T any](rows pgx.Rows) (result []T, err error) {
 	defer rows.Close()
+	result = []T{}
 	var obj T
 	//特例时间类型
 	if _, isTime := any(obj).(time.Time); isTime {
