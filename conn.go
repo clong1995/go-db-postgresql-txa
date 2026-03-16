@@ -2,8 +2,8 @@ package db
 
 import (
 	"context"
-	"errors"
-	"log"
+
+	"github.com/pkg/errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -18,69 +18,53 @@ func NewConn(name DBName) Conn {
 	return Conn{pool: databasePool[name]}
 }
 
-func (p Conn) Query(query string, args ...any) (rows pgx.Rows, err error) {
+func (p Conn) Query(query string, args ...any) (pgx.Rows, error) {
 	if p.pool == nil {
-		err = errors.New("pool is nil")
-		log.Println(err)
-		return
+		return nil, errors.New("pool is nil")
 	}
-	if rows, err = p.pool.Query(context.Background(), query, args...); err != nil {
-		log.Println(err)
-		return
+	rows, err := p.pool.Query(context.Background(), query, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "")
 	}
-	return
+	return rows, nil
 }
 
-func (p Conn) Exec(query string, args ...any) (result pgconn.CommandTag, err error) {
+func (p Conn) Exec(query string, args ...any) (pgconn.CommandTag, error) {
+	result := pgconn.CommandTag{}
 	if p.pool == nil {
-		err = errors.New("pool is nil")
-		log.Println(err)
-		return
+		return result, errors.New("pool is nil")
 	}
 
-	if result, err = p.pool.Exec(context.Background(), query, args...); err != nil {
-		log.Println(err)
-		return
+	result, err := p.pool.Exec(context.Background(), query, args...)
+	if err != nil {
+		return result, errors.Wrap(err, "")
 	}
-	return
+	return result, nil
 }
 
 // ConnQueryScan 自动扫描结果并关闭rows，对 Conn.Query 的包装
-func ConnQueryScan[T any](conn Conn, query string, args ...any) (result []T, err error) {
+func ConnQueryScan[T any](conn Conn, query string, args ...any) ([]T, error) {
 	rows, err := conn.Query(query, args...)
 	if err != nil {
-		log.Println(err)
-		return
+		return nil, errors.Wrap(err, "")
 	}
 	defer rows.Close()
-	if result, err = Scan[T](rows); err != nil {
-		log.Println(err)
-		return
+	result, err := Scan[T](rows)
+	if err != nil {
+		return nil, errors.Wrap(err, "")
 	}
-	return
+	return result, nil
 }
 
 // ConnQueryScanOne 自动扫描结果并关闭rows，对 Conn.Query 的包装
-func ConnQueryScanOne[T any](conn Conn, query string, args ...any) (result T, exists bool, err error) {
-	/*rows, err := conn.Query(query, args...)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer rows.Close()
-	if result, err = ScanOne[T](rows); err != nil {
-		log.Println(err)
-		return
-	}*/
+func ConnQueryScanOne[T any](conn Conn, query string, args ...any) (T, bool, error) {
+	var result T
 	scan, err := ConnQueryScan[T](conn, query, args...)
 	if err != nil {
-		log.Println(err)
-		return
+		return result, false, errors.Wrap(err, "")
 	}
 	if len(scan) == 0 {
-		return
+		return result, false, nil
 	}
-
-	result, exists = scan[0], true
-	return
+	return scan[0], true, nil
 }

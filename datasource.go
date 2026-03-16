@@ -2,114 +2,108 @@ package db
 
 import (
 	"context"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/clong1995/go-ansi-color"
-	"github.com/clong1995/go-config"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pkg/errors"
 )
 
 var databasePool map[DBName]*pgxpool.Pool
 var prefix = "postgresql-txa"
 
-func MultiDataSource() (dbNames []DBName) {
-	configMaxConns := config.Value("MAXCONNS")
-	var maxConn int32
-	if configMaxConns == "" {
-		maxConn = 10
-	} else {
-		i, err := strconv.ParseInt(configMaxConns, 10, 32)
-		if err != nil {
-			pcolor.PrintFatal(prefix, err.Error())
-			return
-		}
-		maxConn = int32(i)
-	}
-
-	configDataSource := config.Value("DATASOURCE")
-	dataSource := strings.Split(configDataSource, ",")
-
-	dbNames = make([]DBName, len(dataSource))
+func MultiDatasource() ([]DBName, error) {
+	//dataSource := strings.Split(configDatasource, ",")
+	dbNames := make([]DBName, len(configDatasource))
 	databasePool = make(map[DBName]*pgxpool.Pool)
 
-	for i, v := range dataSource {
+	for i, v := range configDatasource {
 		conf, err := pgxpool.ParseConfig(v)
 		if err != nil {
-			pcolor.PrintFatal(prefix, err.Error())
-			return
+			return nil, errors.Wrap(err, "")
 		}
-		conf.MaxConns = maxConn
+		conf.MaxConns = configMaxConns
 		conf.MinConns = 1
 		conf.MaxConnIdleTime = time.Minute * 30
 
 		pool, err := pgxpool.NewWithConfig(context.Background(), conf)
 		if err != nil {
-			pcolor.PrintFatal(prefix, err.Error())
-			return
+			return nil, errors.Wrap(err, "")
 		}
 
 		if err = pool.Ping(context.Background()); err != nil {
-			pcolor.PrintFatal(prefix, err.Error())
-			return
+			return nil, errors.Wrap(err, "")
 		}
 		dbName := DBName(conf.ConnConfig.Database)
 		databasePool[dbName] = pool
 
 		dbNames[i] = dbName
 
-		pcolor.PrintSucc(prefix, "conn %v", dbName)
+		//pcolor.PrintSucc(prefix, "conn %v", dbName)
 	}
-	return
+	return dbNames, nil
 }
 
-func DataSource() (dbName DBName) {
-	dbnames := MultiDataSource()
+func Datasource() (DBName, error) {
+	var dbName DBName
+	dbnames, err := MultiDatasource()
+	if err != nil {
+		return dbName, errors.Wrap(err, "")
+	}
 	if len(dbnames) != 1 {
-		pcolor.PrintFatal(prefix, "data source should contain 1 db names")
-		return
+		return dbName, errors.New("data source should contain 1 db names")
 	}
-	return dbnames[0]
+	return dbnames[0], nil
 }
 
-func DataSource2() (dbName1, dbName2 DBName) {
-	dbnames := MultiDataSource()
+func Datasource2() (DBName, DBName, error) {
+	var dbName DBName
+	dbnames, err := MultiDatasource()
+	if err != nil {
+		return dbName, dbName, errors.Wrap(err, "")
+	}
 	if len(dbnames) != 2 {
-		pcolor.PrintFatal(prefix, "data source should contain 2 db names")
-		return
+		return dbName, dbName, errors.New("data source should contain 2 db names")
 	}
-	return dbnames[0], dbnames[1]
+	return dbnames[0], dbnames[1], nil
 }
 
-func DataSource3() (dbName1, dbName2, dbName3 DBName) {
-	dbnames := MultiDataSource()
+func Datasource3() (DBName, DBName, DBName, error) {
+	var dbName DBName
+	dbnames, err := MultiDatasource()
+	if err != nil {
+		return dbName, dbName, dbName, errors.Wrap(err, "")
+	}
 	if len(dbnames) != 3 {
-		pcolor.PrintFatal(prefix, "data source should contain 3 db names")
-		return
+		return dbName, dbName, dbName, errors.New("data source should contain 3 db names")
 	}
-	return dbnames[0], dbnames[1], dbnames[2]
+	return dbnames[0], dbnames[1], dbnames[2], nil
 }
-func DataSource4() (dbName1, dbName2, dbName3, dbName4 DBName) {
-	dbnames := MultiDataSource()
+func Datasource4() (DBName, DBName, DBName, DBName, error) {
+	var dbName DBName
+	dbnames, err := MultiDatasource()
+	if err != nil {
+		return dbName, dbName, dbName, dbName, errors.Wrap(err, "")
+	}
 	if len(dbnames) != 4 {
-		pcolor.PrintFatal(prefix, "data source should contain 4 db names")
-		return
+		return dbName, dbName, dbName, dbName, errors.New("data source should contain 4 db names")
 	}
-	return dbnames[0], dbnames[1], dbnames[2], dbnames[3]
+	return dbnames[0], dbnames[1], dbnames[2], dbnames[3], nil
 }
-func DataSource5() (dbName1, dbName2, dbName3, dbName4, dbName5 DBName) {
-	dbnames := MultiDataSource()
-	if len(dbnames) != 5 {
-		pcolor.PrintFatal(prefix, "data source should contain 5 db names")
-		return
+func Datasource5() (DBName, DBName, DBName, DBName, DBName, error) {
+	var dbName DBName
+	dbnames, err := MultiDatasource()
+	if err != nil {
+		return dbName, dbName, dbName, dbName, dbName, errors.Wrap(err, "")
 	}
-	return dbnames[0], dbnames[1], dbnames[2], dbnames[3], dbnames[4]
+	if len(dbnames) != 5 {
+		return dbName, dbName, dbName, dbName, dbName, errors.New("data source should contain 5 db names")
+	}
+	return dbnames[0], dbnames[1], dbnames[2], dbnames[3], dbnames[4], nil
 }
 
 func Close() {
-	for k, v := range databasePool {
+	for _, v := range databasePool {
 		v.Close()
-		pcolor.PrintSucc(prefix, "%v closed", k)
+		//pcolor.PrintSucc(prefix, "%v closed", k)
 	}
 }

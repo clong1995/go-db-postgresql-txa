@@ -1,21 +1,21 @@
 module github.com/clong1995/go-db-postgresql-txa
 
-go 1.25
+go 1.26
 
 require (
-	github.com/clong1995/go-ansi-color v0.0.0-20251016014428-61ea4bba5de6
-	github.com/clong1995/go-config v0.0.0-20251108135142-ae0453f3b68f
-	github.com/jackc/pgx/v5 v5.7.6
-	golang.org/x/net v0.46.0
+	github.com/clong1995/go-ansi-color v0.0.0-20260314102151-cbbdfbe952a8
+	github.com/clong1995/go-config v0.0.0-20260315034624-b146bab75bf4
+	github.com/jackc/pgx/v5 v5.8.0
+	github.com/pkg/errors v0.9.1
+	golang.org/x/net v0.52.0
 )
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	golang.org/x/crypto v0.43.0 // indirect
-	golang.org/x/sync v0.18.0 // indirect
-	golang.org/x/text v0.30.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 )
 
 //replace github.com/clong1995/go-config => /Users/markeckles/Desktop/go-mod/go-config
