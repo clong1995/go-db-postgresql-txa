@@ -42,8 +42,8 @@ func (p Conn) Exec(query string, args ...any) (pgconn.CommandTag, error) {
 	return result, nil
 }
 
-// ConnQueryScan 自动扫描结果并关闭rows，对 Conn.Query 的包装
-func ConnQueryScan[T any](conn Conn, query string, args ...any) ([]T, error) {
+// QueryScan 自动扫描结果并关闭rows，对 Conn.Query 的包装
+func QueryScan[T any](conn Conn, query string, args ...any) ([]T, error) {
 	rows, err := conn.Query(query, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "")
@@ -56,15 +56,19 @@ func ConnQueryScan[T any](conn Conn, query string, args ...any) ([]T, error) {
 	return result, nil
 }
 
-// ConnQueryScanOne 自动扫描结果并关闭rows，对 Conn.Query 的包装
-func ConnQueryScanOne[T any](conn Conn, query string, args ...any) (T, bool, error) {
-	var result T
-	scan, err := ConnQueryScan[T](conn, query, args...)
+// QueryScanOne 自动扫描结果并关闭rows，对 Conn.Query 的包装
+func QueryScanOne[T any](conn Conn, query string, args ...any) (T, bool, error) {
+
+	var zero T
+	rows, err := conn.Query(query, args...)
 	if err != nil {
-		return result, false, errors.Wrap(err, "")
+		return zero, false, errors.Wrap(err, "")
 	}
-	if len(scan) == 0 {
-		return result, false, nil
+	defer rows.Close()
+
+	result, exists, err := ScanOne[T](rows)
+	if err != nil {
+		return zero, false, errors.Wrap(err, "")
 	}
-	return scan[0], true, nil
+	return result, exists, nil
 }

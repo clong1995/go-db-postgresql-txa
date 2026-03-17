@@ -3,6 +3,8 @@ package db
 import (
 	"log"
 
+	stderrors "errors"
+
 	"github.com/pkg/errors"
 
 	"github.com/jackc/pgx/v5"
@@ -11,7 +13,7 @@ import (
 )
 
 // MultiTx 单数据库事物和跨数据库事物
-func MultiTx(dbNames ...DBName) ([]TxConn, func(err error), error) {
+func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 	txConns := make([]TxConn, len(dbNames))
 	var err error
 	for i, v := range dbNames {
@@ -30,41 +32,65 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(err error), error) {
 		}
 	}
 
-	if err != nil {
-		//回滚
+	rollBackAll := func() error {
+		var errJoin error
 		for _, txConn := range txConns {
 			if txConn.tx == nil {
 				continue
 			}
-
-			//采用Rollback的方式关闭开启的事物，或者有更好的方式？
-			if rollbackErr := txConn.tx.Rollback(context.Background()); rollbackErr != nil {
-				//TODO 这个错误怎么处理？
+			rollbackErr := txConn.tx.Rollback(context.Background())
+			if rollbackErr != nil {
+				errJoin = stderrors.Join(errJoin, rollbackErr)
 			}
 		}
+		return errJoin
+	}
+
+	//构建事物期间出错
+	if err != nil {
+		rollbackErr := rollBackAll()
+		err = stderrors.Join(err, rollbackErr)
 		return nil, nil, errors.Wrap(err, "")
 	}
 
-	//TODO 在这里有潜在问题，如果某库提交成功后，某库提交失败，则无法会滚
-	commit := func(err error) {
+	//TODO 在这里**不是**两阶段提交（2PC），这里只会简单的检查事物连接是有关闭。
+	commit := func(err error) error {
+		if err != nil { //输入本身是错误
+			rollbackErr := rollBackAll()
+			err = stderrors.Join(err, rollbackErr)
+			return errors.Wrap(err, "")
+		}
+		//检查事物可用性
 		for _, txConn := range txConns {
-			if txConn.tx == nil || err != nil {
-				if rollbackErr := txConn.tx.Rollback(context.Background()); rollbackErr != nil {
-					//TODO 这个错误怎么处理？
-				}
-			} else {
-				if commitErr := txConn.tx.Commit(context.Background()); commitErr != nil {
-					//TODO 这个错误怎么处理？
-				}
+			var isCloseErr error
+			if txConn.tx.Conn().IsClosed() { //其中一个tx不可用了
+				dbName := databaseName(txConn)
+				isCloseErr = stderrors.Join(isCloseErr, errors.Errorf("%s already closed", dbName))
+			}
+			if isCloseErr != nil {
+				rollbackErr := rollBackAll()
+				err = stderrors.Join(err, rollbackErr)
+				return errors.Wrap(err, "")
 			}
 		}
+
+		//执行提交
+		for _, txConn := range txConns {
+			if commitErr := txConn.tx.Commit(context.Background()); commitErr != nil {
+				//某个事物提交失败了
+				rollbackErr := rollBackAll()
+				err = stderrors.Join(err, commitErr, rollbackErr)
+				return errors.Wrap(err, "")
+			}
+		}
+		return err
 	}
 
 	return txConns, commit, nil
 }
 
 // Tx 对单个数据库使用 MultiTx 的简化
-func Tx(dbName DBName) (TxConn, func(err error), error) {
+func Tx(dbName DBName) (TxConn, func(error) error, error) {
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName)
 	if err != nil {
@@ -74,45 +100,45 @@ func Tx(dbName DBName) (TxConn, func(err error), error) {
 }
 
 // Tx2 对2个数据库使用 MultiTx 的简化
-func Tx2(dbName1, dbName2 DBName) (TxConn, TxConn, func(err error), error) {
+func Tx2(dbName1, dbName2 DBName) (TxConn, TxConn, func(error) error, error) {
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName1, dbName2)
 	if err != nil {
 		return txConn, txConn, nil, errors.Wrap(err, "")
 	}
 
-	return txConns[0], txConns[1], commit, errors.Wrap(err, "")
+	return txConns[0], txConns[1], commit, nil
 }
 
 // Tx3 对3个数据库使用 MultiTx 的简化
-func Tx3(dbName1, dbName2, dbName3 DBName) (TxConn, TxConn, TxConn, func(err error), error) {
+func Tx3(dbName1, dbName2, dbName3 DBName) (TxConn, TxConn, TxConn, func(error) error, error) {
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName1, dbName2, dbName3)
 	if err != nil {
 		return txConn, txConn, txConn, nil, errors.Wrap(err, "")
 	}
-	return txConns[0], txConns[1], txConns[2], commit, errors.Wrap(err, "")
+	return txConns[0], txConns[1], txConns[2], commit, nil
 }
 
 // Tx4 对4个数据库使用 MultiTx 的简化
-func Tx4(dbName1, dbName2, dbName3, dbName4 DBName) (TxConn, TxConn, TxConn, TxConn, func(err error), error) {
+func Tx4(dbName1, dbName2, dbName3, dbName4 DBName) (TxConn, TxConn, TxConn, TxConn, func(error) error, error) {
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName1, dbName2, dbName3, dbName4)
 	if err != nil {
 		return txConn, txConn, txConn, txConn, nil, errors.Wrap(err, "")
 	}
-	return txConns[0], txConns[1], txConns[2], txConns[3], commit, errors.Wrap(err, "")
+	return txConns[0], txConns[1], txConns[2], txConns[3], commit, nil
 }
 
 // Tx5 对5个数据库使用 MultiTx 的简化
-func Tx5(dbName1, dbName2, dbName3, dbName4, dbName5 DBName) (TxConn, TxConn, TxConn, TxConn, TxConn, func(err error), error) {
+func Tx5(dbName1, dbName2, dbName3, dbName4, dbName5 DBName) (TxConn, TxConn, TxConn, TxConn, TxConn, func(error) error, error) {
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName1, dbName2, dbName3, dbName4, dbName5)
 	if err != nil {
 		return txConn, txConn, txConn, txConn, txConn, nil, errors.Wrap(err, "")
 	}
 
-	return txConns[0], txConns[1], txConns[2], txConns[3], txConns[4], commit, errors.Wrap(err, "")
+	return txConns[0], txConns[1], txConns[2], txConns[3], txConns[4], commit, nil
 }
 
 type TxConn struct {
@@ -138,7 +164,7 @@ func (p TxConn) Exec(query string, args ...any) (pgconn.CommandTag, error) {
 
 	result, err := p.tx.Exec(context.Background(), query, args...)
 	if err != nil {
-		return result, errors.New("tx is nil")
+		return result, errors.Wrap(err, "")
 	}
 	return result, nil
 }
@@ -201,4 +227,8 @@ func TxQueryScanOne[T any](txConn TxConn, query string, args ...any) (T, bool, e
 		return result, false, nil
 	}
 	return scan[0], true, nil
+}
+
+func databaseName(txConn TxConn) string {
+	return txConn.tx.Conn().Config().Database
 }
