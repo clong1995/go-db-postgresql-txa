@@ -12,19 +12,22 @@ import (
 	"golang.org/x/net/context"
 )
 
-// MultiTx 单数据库事物和跨数据库事物
+// MultiTx 用于开启一个或多个数据库的事务。
+// 它返回一个 TxConn 切片，每个 TxConn 对应一个数据库连接，以及一个用于提交或回滚所有事务的函数。
+// 如果在开启事务期间发生任何错误，它会尝试回滚所有已开启的事务，并返回一个错误。
 func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 	txConns := make([]TxConn, len(dbNames))
 	var err error
+	// 遍历所有指定的数据库名称，为每个数据库开启一个事务
 	for i, v := range dbNames {
 		p := databasePool[v]
 		if p == nil {
-			err = errors.Errorf("db[%s] is not exist", v)
+			err = errors.Errorf("数据库[%s]不存在", v)
 			break
 		}
 		var tx pgx.Tx
 		if tx, err = p.Begin(context.Background()); err != nil {
-			err = errors.Wrap(err, "")
+			err = errors.Wrap(err, "开启事务失败")
 			break
 		}
 		txConns[i] = TxConn{
@@ -32,6 +35,7 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 		}
 	}
 
+	// rollBackAll 是一个辅助函数，用于回滚所有已开启的事务
 	rollBackAll := func() error {
 		var errJoin error
 		for _, txConn := range txConns {
@@ -46,41 +50,44 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 		return errJoin
 	}
 
-	//构建事物期间出错
+	// 如果在构建事务期间出错，则回滚所有事务并返回错误
 	if err != nil {
 		rollbackErr := rollBackAll()
 		err = stderrors.Join(err, rollbackErr)
-		return nil, nil, errors.Wrap(err, "")
+		return nil, nil, errors.Wrap(err, "构建事务期间出错")
 	}
 
-	//TODO 在这里**不是**两阶段提交（2PC），这里只会简单的检查事物连接是有关闭。
+	// commit 函数用于最终提交或回滚事务
+	// 它接收一个 error 参数。如果该 error 不为 nil，则回滚所有事务。
+	// 否则，它会先检查所有事务连接是否仍然有效，然后提交它们。
+	// 这并非一个严格的“两阶段提交”（2PC），而是一个简化的实现。
 	commit := func(err error) error {
-		if err != nil { //输入本身是错误
+		if err != nil { // 如果传入的错误不为 nil，则回滚
 			rollbackErr := rollBackAll()
 			err = stderrors.Join(err, rollbackErr)
-			return errors.Wrap(err, "")
+			return errors.Wrap(err, "因外部错误而回滚")
 		}
-		//检查事物可用性
+		// 检查所有事务的可用性
 		for _, txConn := range txConns {
 			var isCloseErr error
-			if txConn.tx.Conn().IsClosed() { //其中一个tx不可用了
+			if txConn.tx.Conn().IsClosed() { // 如果其中一个事务连接已关闭
 				dbName := databaseName(txConn)
-				isCloseErr = stderrors.Join(isCloseErr, errors.Errorf("%s already closed", dbName))
+				isCloseErr = stderrors.Join(isCloseErr, errors.Errorf("数据库[%s]的事务连接已关闭", dbName))
 			}
 			if isCloseErr != nil {
 				rollbackErr := rollBackAll()
 				err = stderrors.Join(err, rollbackErr)
-				return errors.Wrap(err, "")
+				return errors.Wrap(err, "因连接已关闭而回滚")
 			}
 		}
 
-		//执行提交
+		// 执行提交
 		for _, txConn := range txConns {
 			if commitErr := txConn.tx.Commit(context.Background()); commitErr != nil {
-				//某个事物提交失败了
+				// 如果某个事务提交失败，则回滚所有事务
 				rollbackErr := rollBackAll()
 				err = stderrors.Join(err, commitErr, rollbackErr)
-				return errors.Wrap(err, "")
+				return errors.Wrap(err, "提交事务失败并已回滚")
 			}
 		}
 		return err
@@ -89,89 +96,93 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 	return txConns, commit, nil
 }
 
-// Tx 对单个数据库使用 MultiTx 的简化
+// Tx 是对 MultiTx 的简化，用于处理单个数据库的事务。
 func Tx(dbName DBName) (TxConn, func(error) error, error) {
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName)
 	if err != nil {
-		return txConn, nil, errors.Wrap(err, "")
+		return txConn, nil, errors.Wrap(err, "创建单个数据库事务失败")
 	}
 	return txConns[0], commit, nil
 }
 
-// Tx2 对2个数据库使用 MultiTx 的简化
+// Tx2 是对 MultiTx 的简化，用于处理两个数据库的事务。
 func Tx2(dbName1, dbName2 DBName) (TxConn, TxConn, func(error) error, error) {
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName1, dbName2)
 	if err != nil {
-		return txConn, txConn, nil, errors.Wrap(err, "")
+		return txConn, txConn, nil, errors.Wrap(err, "创建两个数据库事务失败")
 	}
 
 	return txConns[0], txConns[1], commit, nil
 }
 
-// Tx3 对3个数据库使用 MultiTx 的简化
+// Tx3 是对 MultiTx 的简化，用于处理三个数据库的事务。
 func Tx3(dbName1, dbName2, dbName3 DBName) (TxConn, TxConn, TxConn, func(error) error, error) {
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName1, dbName2, dbName3)
 	if err != nil {
-		return txConn, txConn, txConn, nil, errors.Wrap(err, "")
+		return txConn, txConn, txConn, nil, errors.Wrap(err, "创建三个数据库事务失败")
 	}
 	return txConns[0], txConns[1], txConns[2], commit, nil
 }
 
-// Tx4 对4个数据库使用 MultiTx 的简化
+// Tx4 是对 MultiTx 的简化，用于处理四个数据库的事务。
 func Tx4(dbName1, dbName2, dbName3, dbName4 DBName) (TxConn, TxConn, TxConn, TxConn, func(error) error, error) {
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName1, dbName2, dbName3, dbName4)
 	if err != nil {
-		return txConn, txConn, txConn, txConn, nil, errors.Wrap(err, "")
+		return txConn, txConn, txConn, txConn, nil, errors.Wrap(err, "创建四个数据库事务失败")
 	}
 	return txConns[0], txConns[1], txConns[2], txConns[3], commit, nil
 }
 
-// Tx5 对5个数据库使用 MultiTx 的简化
+// Tx5 是对 MultiTx 的简化，用于处理五个数据库的事务。
 func Tx5(dbName1, dbName2, dbName3, dbName4, dbName5 DBName) (TxConn, TxConn, TxConn, TxConn, TxConn, func(error) error, error) {
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName1, dbName2, dbName3, dbName4, dbName5)
 	if err != nil {
-		return txConn, txConn, txConn, txConn, txConn, nil, errors.Wrap(err, "")
+		return txConn, txConn, txConn, txConn, txConn, nil, errors.Wrap(err, "创建五个数据库事务失败")
 	}
 
 	return txConns[0], txConns[1], txConns[2], txConns[3], txConns[4], commit, nil
 }
 
+// TxConn 包装了 pgx.Tx，提供在事务上下文中执行数据库操作的方法。
 type TxConn struct {
 	tx pgx.Tx
 }
 
+// Query 在事务中执行一个查询，并返回 pgx.Rows。
 func (p TxConn) Query(query string, args ...any) (pgx.Rows, error) {
 	if p.tx == nil {
-		return nil, errors.New("tx is nil")
+		return nil, errors.New("事务为 nil")
 	}
 	rows, err := p.tx.Query(context.Background(), query, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.Wrap(err, "事务查询失败")
 	}
 	return rows, nil
 }
 
+// Exec 在事务中执行一个 SQL 命令（如 INSERT, UPDATE, DELETE），并返回命令的结果标签。
 func (p TxConn) Exec(query string, args ...any) (pgconn.CommandTag, error) {
 	var result pgconn.CommandTag
 	if p.tx == nil {
-		return result, errors.New("tx is nil")
+		return result, errors.New("事务为 nil")
 	}
 
 	result, err := p.tx.Exec(context.Background(), query, args...)
 	if err != nil {
-		return result, errors.Wrap(err, "")
+		return result, errors.Wrap(err, "事务执行失败")
 	}
 	return result, nil
 }
 
+// Batch 在事务中执行批量操作。
 func (p TxConn) Batch(query string, data [][]any) error {
 	if p.tx == nil {
-		return errors.New("tx is nil")
+		return errors.New("事务为 nil")
 	}
 	batch := &pgx.Batch{}
 	for _, v := range data {
@@ -179,14 +190,15 @@ func (p TxConn) Batch(query string, data [][]any) error {
 	}
 	br := p.tx.SendBatch(context.Background(), batch)
 	if err := br.Close(); err != nil {
-		return errors.Wrap(err, "")
+		return errors.Wrap(err, "事务批量操作失败")
 	}
 	return nil
 }
 
+// Copy 在事务中使用 PostgreSQL 的 COPY协议 从数据源高效地批量插入数据。
 func (p TxConn) Copy(tableName string, columnNames []string, data [][]any) (int64, error) {
 	if p.tx == nil {
-		return 0, errors.New("tx is nil")
+		return 0, errors.New("事务为 nil")
 	}
 	table := pgx.Identifier{tableName}
 	rowsAffected, err := p.tx.CopyFrom(
@@ -196,32 +208,33 @@ func (p TxConn) Copy(tableName string, columnNames []string, data [][]any) (int6
 		pgx.CopyFromRows(data),
 	)
 	if err != nil {
-		return 0, errors.Wrap(err, "")
+		return 0, errors.Wrap(err, "事务 COPY 操作失败")
 	}
 	return rowsAffected, nil
 }
 
-// TxQueryScan 自动扫描结果并关闭rows，对 Conn.Query 的包装
+// TxQueryScan 是一个便捷函数，它在事务中执行查询，并将结果自动扫描到指定的类型切片中。
 func TxQueryScan[T any](txConn TxConn, query string, args ...any) (result []T, err error) {
 	rows, err := txConn.Query(query, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.Wrap(err, "执行事务查询失败")
 	}
 	defer rows.Close()
 	result, err = Scan[T](rows)
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.Wrap(err, "扫描事务查询结果失败")
 	}
 	return result, nil
 }
 
-// TxQueryScanOne 自动扫描结果并关闭rows，对 Conn.Query 的包装
+// TxQueryScanOne 与 TxQueryScan 类似，但只返回查询结果的第一行。
+// 它返回结果、一个布尔值（指示是否找到记录）和可能的错误。
 func TxQueryScanOne[T any](txConn TxConn, query string, args ...any) (T, bool, error) {
 	var result T
 	scan, err := TxQueryScan[T](txConn, query, args...)
 	if err != nil {
 		log.Println(err)
-		return result, false, errors.Wrap(err, "")
+		return result, false, errors.Wrap(err, "执行并扫描单行事务查询失败")
 	}
 	if len(scan) == 0 {
 		return result, false, nil
@@ -229,6 +242,7 @@ func TxQueryScanOne[T any](txConn TxConn, query string, args ...any) (T, bool, e
 	return scan[0], true, nil
 }
 
+// databaseName 从事务连接中获取数据库的名称。
 func databaseName(txConn TxConn) string {
 	return txConn.tx.Conn().Config().Database
 }
