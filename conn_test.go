@@ -30,7 +30,7 @@ func TestDB_Batch(t *testing.T) {
 			}()
 
 			//连接数据源
-			demo_01, _, err := Datasource2()
+			demo01, _, err := Datasource2()
 			if err != nil {
 				return
 			}
@@ -38,7 +38,7 @@ func TestDB_Batch(t *testing.T) {
 			defer Close()
 
 			//启动事物
-			tx, commit, err := Tx(demo_01)
+			tx, commit, err := Tx(demo01)
 			if err != nil {
 				return
 			}
@@ -84,7 +84,7 @@ func TestDB_Copy(t *testing.T) {
 				}
 			}()
 			//连接数据源
-			demo_01, _, err := Datasource2()
+			demo01, _, err := Datasource2()
 			if err != nil {
 				return
 			}
@@ -92,7 +92,7 @@ func TestDB_Copy(t *testing.T) {
 			defer Close()
 
 			//启动事物
-			tx, commit, err := Tx(demo_01)
+			tx, commit, err := Tx(demo01)
 			if err != nil {
 				return
 			}
@@ -139,7 +139,7 @@ func TestDB_Exec(t *testing.T) {
 			}()
 
 			//连接数据源
-			demo_01, _, err := Datasource2()
+			demo01, _, err := Datasource2()
 			if err != nil {
 				return
 			}
@@ -147,7 +147,7 @@ func TestDB_Exec(t *testing.T) {
 			defer Close()
 
 			//测试
-			conn := NewConn(demo_01)
+			conn := NewConn(demo01)
 
 			if _, err = conn.Exec(`INSERT INTO foo (id,name) VALUES($1,$2)`, 5, "e"); err != nil {
 				return
@@ -181,7 +181,7 @@ func TestDB_ExecTx(t *testing.T) {
 			}()
 
 			//连接数据源
-			demo_01, demo_02, err := Datasource2()
+			demo01, demo02, err := Datasource2()
 			if err != nil {
 				return
 			}
@@ -189,7 +189,7 @@ func TestDB_ExecTx(t *testing.T) {
 			defer Close()
 
 			//启动事物
-			demo01Tx, demo02Tx, commit, err := Tx2(demo_01, demo_02)
+			demo01Tx, demo02Tx, commit, err := Tx2(demo01, demo02)
 			if err != nil {
 				return
 			}
@@ -302,7 +302,7 @@ func TestDB_QueryScan(t *testing.T) {
 				Id   int64
 				Name string
 			}
-			result, err := ConnQueryScan[field](conn, "SELECT id,name FROM foo WHERE id < $1", 3)
+			result, err := QueryScan[field](conn, "SELECT id,name FROM foo WHERE id < $1", 3)
 			if err != nil {
 				return
 			}
