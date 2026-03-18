@@ -29,7 +29,7 @@ func (p Conn) Query(query string, args ...any) (pgx.Rows, error) {
 	}
 	rows, err := p.pool.Query(context.Background(), query, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "查询失败")
+		return nil, errors.WithStack(err)
 	}
 	return rows, nil
 }
@@ -44,7 +44,7 @@ func (p Conn) Exec(query string, args ...any) (pgconn.CommandTag, error) {
 
 	result, err := p.pool.Exec(context.Background(), query, args...)
 	if err != nil {
-		return result, errors.Wrap(err, "执行失败")
+		return result, errors.WithStack(err)
 	}
 	return result, nil
 }
@@ -54,12 +54,12 @@ func (p Conn) Exec(query string, args ...any) (pgconn.CommandTag, error) {
 func QueryScan[T any](conn Conn, query string, args ...any) ([]T, error) {
 	rows, err := conn.Query(query, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "执行查询失败")
+		return nil, err
 	}
 	defer rows.Close()
 	result, err := Scan[T](rows)
 	if err != nil {
-		return nil, errors.Wrap(err, "扫描查询结果失败")
+		return nil, err
 	}
 	return result, nil
 }
@@ -71,13 +71,13 @@ func QueryScanOne[T any](conn Conn, query string, args ...any) (T, bool, error) 
 	var zero T
 	rows, err := conn.Query(query, args...)
 	if err != nil {
-		return zero, false, errors.Wrap(err, "执行单行查询失败")
+		return zero, false, err
 	}
 	defer rows.Close()
 
 	result, exists, err := ScanOne[T](rows)
 	if err != nil {
-		return zero, false, errors.Wrap(err, "扫描单行查询结果失败")
+		return zero, false, err
 	}
 	return result, exists, nil
 }

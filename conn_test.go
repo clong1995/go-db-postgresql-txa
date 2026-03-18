@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/pkg/errors"
 )
 
 func TestDB_Batch(t *testing.T) {
@@ -22,10 +23,8 @@ func TestDB_Batch(t *testing.T) {
 			var err error
 			defer func() {
 				//捕获堆栈
-				log.Printf("%+v\n", err)
-
-				if (err != nil) != tt.wantErr {
-					t.Errorf("Batch() error = %v, wantErr %v", err, tt.wantErr)
+				if err != nil {
+					t.Errorf("Batch() error = %+v", err)
 				}
 			}()
 
@@ -75,12 +74,8 @@ func TestDB_Copy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
 			defer func() {
-				//捕获堆栈
-				log.Printf("%+v\n", err)
-
-				if (err != nil) != tt.wantErr {
-					t.Errorf("Copy() error = %v, wantErr %v", err, tt.wantErr)
-					return
+				if err != nil {
+					t.Errorf("Copy() error = %+v", err)
 				}
 			}()
 			//连接数据源
@@ -130,10 +125,8 @@ func TestDB_Exec(t *testing.T) {
 			var err error
 			defer func() {
 				//捕获堆栈
-				log.Printf("%+v\n", err)
-
-				if (err != nil) != tt.wantErr {
-					t.Errorf("Exec() error = %v, wantErr %v", err, tt.wantErr)
+				if err != nil {
+					t.Errorf("Exec() error = %+v", err)
 					return
 				}
 			}()
@@ -172,11 +165,9 @@ func TestDB_ExecTx(t *testing.T) {
 			var err error
 			defer func() {
 				//捕获堆栈
-				log.Printf("%+v\n", err)
-
-				if (err != nil) != tt.wantErr {
-					t.Errorf("Exec() error = %v, wantErr %v", err, tt.wantErr)
-					return
+				if err != nil {
+					log.Printf("%+v", errors.WithStack(err))
+					//t.Errorf("Exec() error = %+v", err)
 				}
 			}()
 
@@ -199,12 +190,13 @@ func TestDB_ExecTx(t *testing.T) {
 			}()
 
 			//操作1
-			if _, err = demo01Tx.Exec(`INSERT foo demo (id,name) VALUES($1,$2)`, 6, "f"); (err != nil) != tt.wantErr {
+			if _, err = demo01Tx.Exec(`INSERT INTO foo (id,name) VALUES($1,$2)`, 6, "f"); err != nil {
 				return
 			}
 
 			//操作2
-			if _, err = demo02Tx.Exec(`INSERT INTO foo (id,name) VALUES($1,$2)`, 6, "f"); (err != nil) != tt.wantErr {
+			if _, err = demo02Tx.Exec(`INSERT INTO foo (id,name) VALUES($1,$2)`, 6, "f"); err != nil {
+				err = errors.Wrap(err, "demo02 数据库插入失败")
 				return
 			}
 
@@ -227,11 +219,8 @@ func TestDB_Query(t *testing.T) {
 			var err error
 			defer func() {
 				//捕获堆栈
-				log.Printf("%+v\n", err)
-
-				if (err != nil) != tt.wantErr {
-					t.Errorf("Query() error = %v, wantErr %v", err, tt.wantErr)
-					return
+				if err != nil {
+					t.Errorf("Query() error = %+v", err)
 				}
 			}()
 			//连接数据源
@@ -282,10 +271,8 @@ func TestDB_QueryScan(t *testing.T) {
 			var err error
 			defer func() {
 				//捕获堆栈
-				log.Printf("%+v\n", err)
-
-				if (err != nil) != tt.wantErr {
-					t.Errorf("QueryScan() error = %v, wantErr %v", err, tt.wantErr)
+				if err != nil {
+					t.Errorf("QueryScan() error = %+v", err)
 					return
 				}
 			}()

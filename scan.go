@@ -28,7 +28,7 @@ func Scan[T any](rows pgx.Rows) ([]T, error) {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return []T{}, nil
 			}
-			return result, errors.Wrap(err, "扫描到结构体切片失败")
+			return result, errors.WithStack(err)
 		}
 		return result, nil
 	}
@@ -40,7 +40,7 @@ Base:
 		if errors.Is(err, pgx.ErrNoRows) {
 			return []T{}, nil
 		}
-		return nil, errors.Wrap(err, "扫描到基本类型切片失败")
+		return nil, errors.WithStack(err)
 	}
 	return result, nil
 }
@@ -63,7 +63,7 @@ func ScanOne[T any](rows pgx.Rows) (T, bool, error) {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return result, false, nil
 			}
-			return result, false, errors.Wrap(err, "扫描单行到结构体失败")
+			return result, false, errors.WithStack(err)
 		}
 		return result, true, nil
 	}
@@ -75,7 +75,7 @@ Base:
 		if errors.Is(err, pgx.ErrNoRows) {
 			return result, false, nil
 		}
-		return result, false, errors.Wrap(err, "扫描单行到基本类型失败")
+		return result, false, errors.WithStack(err)
 	}
 	return result, true, nil
 }

@@ -23,7 +23,7 @@ func MultiDatasource() ([]DBName, error) {
 		// 解析连接字符串
 		conf, err := pgxpool.ParseConfig(v)
 		if err != nil {
-			return nil, errors.Wrap(err, "解析数据源配置失败")
+			return nil, errors.WithStack(err)
 		}
 		// 配置连接池参数
 		conf.MaxConns = configMaxConns
@@ -33,12 +33,12 @@ func MultiDatasource() ([]DBName, error) {
 		// 创建新的连接池
 		pool, err := pgxpool.NewWithConfig(context.Background(), conf)
 		if err != nil {
-			return nil, errors.Wrap(err, "创建连接池失败")
+			return nil, errors.WithStack(err)
 		}
 
 		// Ping 数据库以验证连接
 		if err = pool.Ping(context.Background()); err != nil {
-			return nil, errors.Wrap(err, "Ping 数据库失败")
+			return nil, errors.WithStack(err)
 		}
 		dbName := DBName(conf.ConnConfig.Database)
 		databasePool[dbName] = pool
@@ -54,7 +54,7 @@ func Datasource() (DBName, error) {
 	var dbName DBName
 	dbnames, err := MultiDatasource()
 	if err != nil {
-		return dbName, errors.Wrap(err, "初始化单个数据源失败")
+		return dbName, err
 	}
 	if len(dbnames) != 1 {
 		return dbName, errors.New("数据源应包含一个数据库名称")
@@ -67,7 +67,7 @@ func Datasource2() (DBName, DBName, error) {
 	var dbName DBName
 	dbnames, err := MultiDatasource()
 	if err != nil {
-		return dbName, dbName, errors.Wrap(err, "初始化两个数据源失败")
+		return dbName, dbName, err
 	}
 	if len(dbnames) != 2 {
 		return dbName, dbName, errors.New("数据源应包含两个数据库名称")
@@ -80,7 +80,7 @@ func Datasource3() (DBName, DBName, DBName, error) {
 	var dbName DBName
 	dbnames, err := MultiDatasource()
 	if err != nil {
-		return dbName, dbName, dbName, errors.Wrap(err, "初始化三个数据源失败")
+		return dbName, dbName, dbName, err
 	}
 	if len(dbnames) != 3 {
 		return dbName, dbName, dbName, errors.New("数据源应包含三个数据库名称")
@@ -93,7 +93,7 @@ func Datasource4() (DBName, DBName, DBName, DBName, error) {
 	var dbName DBName
 	dbnames, err := MultiDatasource()
 	if err != nil {
-		return dbName, dbName, dbName, dbName, errors.Wrap(err, "初始化四个数据源失败")
+		return dbName, dbName, dbName, dbName, err
 	}
 	if len(dbnames) != 4 {
 		return dbName, dbName, dbName, dbName, errors.New("数据源应包含四个数据库名称")
@@ -106,7 +106,7 @@ func Datasource5() (DBName, DBName, DBName, DBName, DBName, error) {
 	var dbName DBName
 	dbnames, err := MultiDatasource()
 	if err != nil {
-		return dbName, dbName, dbName, dbName, dbName, errors.Wrap(err, "初始化五个数据源失败")
+		return dbName, dbName, dbName, dbName, dbName, err
 	}
 	if len(dbnames) != 5 {
 		return dbName, dbName, dbName, dbName, dbName, errors.New("数据源应包含五个数据库名称")

@@ -1,8 +1,6 @@
 package db
 
 import (
-	"log"
-
 	stderrors "errors"
 
 	"github.com/pkg/errors"
@@ -27,7 +25,7 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 		}
 		var tx pgx.Tx
 		if tx, err = p.Begin(context.Background()); err != nil {
-			err = errors.Wrap(err, "开启事务失败")
+			err = errors.WithStack(err)
 			break
 		}
 		txConns[i] = TxConn{
@@ -44,7 +42,7 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 			}
 			rollbackErr := txConn.tx.Rollback(context.Background())
 			if rollbackErr != nil {
-				errJoin = stderrors.Join(errJoin, rollbackErr)
+				errJoin = stderrors.Join(errJoin, errors.WithStack(rollbackErr))
 			}
 		}
 		return errJoin
@@ -54,30 +52,28 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 	if err != nil {
 		rollbackErr := rollBackAll()
 		err = stderrors.Join(err, rollbackErr)
-		return nil, nil, errors.Wrap(err, "构建事务期间出错")
+		return nil, nil, err
 	}
 
 	// commit 函数用于最终提交或回滚事务
 	// 它接收一个 error 参数。如果该 error 不为 nil，则回滚所有事务。
 	// 否则，它会先检查所有事务连接是否仍然有效，然后提交它们。
 	// 这并非一个严格的“两阶段提交”（2PC），而是一个简化的实现。
-	commit := func(err error) error {
-		if err != nil { // 如果传入的错误不为 nil，则回滚
+	commit := func(inputErr error) error {
+		var errCommit error
+		if inputErr != nil { // 如果传入的错误不为 nil，则回滚
 			rollbackErr := rollBackAll()
-			err = stderrors.Join(err, rollbackErr)
-			return errors.Wrap(err, "因外部错误而回滚")
+			return stderrors.Join(errCommit, inputErr, rollbackErr)
 		}
 		// 检查所有事务的可用性
 		for _, txConn := range txConns {
-			var isCloseErr error
+			//var isCloseErr error
 			if txConn.tx.Conn().IsClosed() { // 如果其中一个事务连接已关闭
 				dbName := databaseName(txConn)
-				isCloseErr = stderrors.Join(isCloseErr, errors.Errorf("数据库[%s]的事务连接已关闭", dbName))
-			}
-			if isCloseErr != nil {
+				errCommit = errors.Errorf("数据库[%s]的事务连接已关闭", dbName)
+				//关闭所有
 				rollbackErr := rollBackAll()
-				err = stderrors.Join(err, rollbackErr)
-				return errors.Wrap(err, "因连接已关闭而回滚")
+				return stderrors.Join(errCommit, rollbackErr)
 			}
 		}
 
@@ -86,8 +82,8 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 			if commitErr := txConn.tx.Commit(context.Background()); commitErr != nil {
 				// 如果某个事务提交失败，则回滚所有事务
 				rollbackErr := rollBackAll()
-				err = stderrors.Join(err, commitErr, rollbackErr)
-				return errors.Wrap(err, "提交事务失败并已回滚")
+				err = stderrors.Join(err, errors.WithStack(commitErr), rollbackErr)
+				return err
 			}
 		}
 		return err
@@ -101,7 +97,7 @@ func Tx(dbName DBName) (TxConn, func(error) error, error) {
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName)
 	if err != nil {
-		return txConn, nil, errors.Wrap(err, "创建单个数据库事务失败")
+		return txConn, nil, err
 	}
 	return txConns[0], commit, nil
 }
@@ -111,7 +107,7 @@ func Tx2(dbName1, dbName2 DBName) (TxConn, TxConn, func(error) error, error) {
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName1, dbName2)
 	if err != nil {
-		return txConn, txConn, nil, errors.Wrap(err, "创建两个数据库事务失败")
+		return txConn, txConn, nil, err
 	}
 
 	return txConns[0], txConns[1], commit, nil
@@ -122,7 +118,7 @@ func Tx3(dbName1, dbName2, dbName3 DBName) (TxConn, TxConn, TxConn, func(error) 
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName1, dbName2, dbName3)
 	if err != nil {
-		return txConn, txConn, txConn, nil, errors.Wrap(err, "创建三个数据库事务失败")
+		return txConn, txConn, txConn, nil, err
 	}
 	return txConns[0], txConns[1], txConns[2], commit, nil
 }
@@ -132,7 +128,7 @@ func Tx4(dbName1, dbName2, dbName3, dbName4 DBName) (TxConn, TxConn, TxConn, TxC
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName1, dbName2, dbName3, dbName4)
 	if err != nil {
-		return txConn, txConn, txConn, txConn, nil, errors.Wrap(err, "创建四个数据库事务失败")
+		return txConn, txConn, txConn, txConn, nil, err
 	}
 	return txConns[0], txConns[1], txConns[2], txConns[3], commit, nil
 }
@@ -142,7 +138,7 @@ func Tx5(dbName1, dbName2, dbName3, dbName4, dbName5 DBName) (TxConn, TxConn, Tx
 	var txConn TxConn
 	txConns, commit, err := MultiTx(dbName1, dbName2, dbName3, dbName4, dbName5)
 	if err != nil {
-		return txConn, txConn, txConn, txConn, txConn, nil, errors.Wrap(err, "创建五个数据库事务失败")
+		return txConn, txConn, txConn, txConn, txConn, nil, err
 	}
 
 	return txConns[0], txConns[1], txConns[2], txConns[3], txConns[4], commit, nil
@@ -160,7 +156,7 @@ func (p TxConn) Query(query string, args ...any) (pgx.Rows, error) {
 	}
 	rows, err := p.tx.Query(context.Background(), query, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "事务查询失败")
+		return nil, errors.WithStack(err)
 	}
 	return rows, nil
 }
@@ -174,7 +170,7 @@ func (p TxConn) Exec(query string, args ...any) (pgconn.CommandTag, error) {
 
 	result, err := p.tx.Exec(context.Background(), query, args...)
 	if err != nil {
-		return result, errors.Wrap(err, "事务执行失败")
+		return result, errors.WithStack(err)
 	}
 	return result, nil
 }
@@ -190,7 +186,7 @@ func (p TxConn) Batch(query string, data [][]any) error {
 	}
 	br := p.tx.SendBatch(context.Background(), batch)
 	if err := br.Close(); err != nil {
-		return errors.Wrap(err, "事务批量操作失败")
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -208,7 +204,7 @@ func (p TxConn) Copy(tableName string, columnNames []string, data [][]any) (int6
 		pgx.CopyFromRows(data),
 	)
 	if err != nil {
-		return 0, errors.Wrap(err, "事务 COPY 操作失败")
+		return 0, errors.WithStack(err)
 	}
 	return rowsAffected, nil
 }
@@ -217,12 +213,12 @@ func (p TxConn) Copy(tableName string, columnNames []string, data [][]any) (int6
 func TxQueryScan[T any](txConn TxConn, query string, args ...any) (result []T, err error) {
 	rows, err := txConn.Query(query, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "执行事务查询失败")
+		return nil, err
 	}
 	defer rows.Close()
 	result, err = Scan[T](rows)
 	if err != nil {
-		return nil, errors.Wrap(err, "扫描事务查询结果失败")
+		return nil, err
 	}
 	return result, nil
 }
@@ -233,8 +229,7 @@ func TxQueryScanOne[T any](txConn TxConn, query string, args ...any) (T, bool, e
 	var result T
 	scan, err := TxQueryScan[T](txConn, query, args...)
 	if err != nil {
-		log.Println(err)
-		return result, false, errors.Wrap(err, "执行并扫描单行事务查询失败")
+		return result, false, err
 	}
 	if len(scan) == 0 {
 		return result, false, nil
