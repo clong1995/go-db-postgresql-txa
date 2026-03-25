@@ -4,6 +4,8 @@ github.com/clong1995/go-config v0.0.0-20260315015120-b950f867acd6 h1:vQaXVy3ztBE
 github.com/clong1995/go-config v0.0.0-20260315015120-b950f867acd6/go.mod h1:ugF8THQGBMTUneeVe48NNEzi5zCZ3z8g6K/3LeMtO9c=
 github.com/clong1995/go-config v0.0.0-20260315034624-b146bab75bf4 h1:dmH9BUA7DkhgJ5Ml/7kmYstOO1XM9glaiiMEPFqlSmQ=
 github.com/clong1995/go-config v0.0.0-20260315034624-b146bab75bf4/go.mod h1:ugF8THQGBMTUneeVe48NNEzi5zCZ3z8g6K/3LeMtO9c=
+github.com/clong1995/go-config v0.0.0-20260315070032-d84683978967 h1:KmV+/XjLjKPxs2z0K7NaAKiEjxhSnSTDgh1rR898go4=
+github.com/clong1995/go-config v0.0.0-20260315070032-d84683978967/go.mod h1:ugF8THQGBMTUneeVe48NNEzi5zCZ3z8g6K/3LeMtO9c=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -13,6 +15,8 @@ github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 h1:iCEnooe7Ulw
 github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761/go.mod h1:5TJZWKEWniPve33vlWYSoGYefn3gLQRzjfDlhSJ9ZKM=
 github.com/jackc/pgx/v5 v5.8.0 h1:TYPDoleBBme0xGSAX3/+NujXXtpZn9HBONkQC7IEZSo=
 github.com/jackc/pgx/v5 v5.8.0/go.mod h1:QVeDInX2m9VyzvNeiCJVjCkNFqzsNb43204HshNSZKw=
+github.com/jackc/pgx/v5 v5.9.1 h1:uwrxJXBnx76nyISkhr33kQLlUqjv7et7b9FjCen/tdc=
+github.com/jackc/pgx/v5 v5.9.1/go.mod h1:mal1tBGAFfLHvZzaYh77YS/eC6IX9OWbRV1QIIM0Jn4=
 github.com/jackc/puddle/v2 v2.2.2 h1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo=
 github.com/jackc/puddle/v2 v2.2.2/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
