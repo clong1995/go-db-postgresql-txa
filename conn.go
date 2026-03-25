@@ -56,7 +56,9 @@ func QueryScan[T any](conn Conn, query string, args ...any) ([]T, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+
+	// Scan 内部会执行 defer rows.Close()，故去掉多余关闭
+	//defer rows.Close()
 	result, err := Scan[T](rows)
 	if err != nil {
 		return nil, err
@@ -73,7 +75,8 @@ func QueryScanOne[T any](conn Conn, query string, args ...any) (T, bool, error) 
 	if err != nil {
 		return zero, false, err
 	}
-	defer rows.Close()
+	// ScanOne 内部会执行 defer rows.Close()，故去掉多余关闭
+	// defer rows.Close()
 
 	result, exists, err := ScanOne[T](rows)
 	if err != nil {

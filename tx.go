@@ -41,7 +41,8 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 				continue
 			}
 			rollbackErr := txConn.tx.Rollback(context.Background())
-			if rollbackErr != nil {
+			// 忽略 ErrTxClosed，防止成功 Commit 后的事务被回滚时产生无意义的报错
+			if rollbackErr != nil && !stderrors.Is(rollbackErr, pgx.ErrTxClosed) {
 				errJoin = stderrors.Join(errJoin, errors.WithStack(rollbackErr))
 			}
 		}
@@ -60,17 +61,16 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 	// 否则，它会先检查所有事务连接是否仍然有效，然后提交它们。
 	// 这并非一个严格的“两阶段提交”（2PC），而是一个简化的实现。
 	commit := func(inputErr error) error {
-		var errCommit error
 		if inputErr != nil { // 如果传入的错误不为 nil，则回滚
 			rollbackErr := rollBackAll()
-			return stderrors.Join(errCommit, inputErr, rollbackErr)
+			return stderrors.Join(inputErr, rollbackErr)
 		}
 		// 检查所有事务的可用性
 		for _, txConn := range txConns {
 			//var isCloseErr error
 			if txConn.tx.Conn().IsClosed() { // 如果其中一个事务连接已关闭
 				dbName := databaseName(txConn)
-				errCommit = errors.Errorf("数据库[%s]的事务连接已关闭", dbName)
+				errCommit := errors.Errorf("数据库[%s]的事务连接已关闭", dbName)
 				//关闭所有
 				rollbackErr := rollBackAll()
 				return stderrors.Join(errCommit, rollbackErr)
@@ -82,11 +82,10 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 			if commitErr := txConn.tx.Commit(context.Background()); commitErr != nil {
 				// 如果某个事务提交失败，则回滚所有事务
 				rollbackErr := rollBackAll()
-				err = stderrors.Join(err, errors.WithStack(commitErr), rollbackErr)
-				return err
+				return stderrors.Join(errors.WithStack(commitErr), rollbackErr)
 			}
 		}
-		return err
+		return nil
 	}
 
 	return txConns, commit, nil
@@ -185,8 +184,12 @@ func (p TxConn) Batch(query string, data [][]any) error {
 		_ = batch.Queue(query, v...)
 	}
 	br := p.tx.SendBatch(context.Background(), batch)
-	if err := br.Close(); err != nil {
-		return errors.WithStack(err)
+	defer br.Close()
+	// 必须迭代 Exec 获取结果，以确保捕获每条语句的准确错误，同时维护网络包状态
+	for i := 0; i < len(data); i++ {
+		if _, err := br.Exec(); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 	return nil
 }
@@ -210,13 +213,15 @@ func (p TxConn) Copy(tableName string, columnNames []string, data [][]any) (int6
 }
 
 // TxQueryScan 是一个便捷函数，它在事务中执行查询，并将结果自动扫描到指定的类型切片中。
-func TxQueryScan[T any](txConn TxConn, query string, args ...any) (result []T, err error) {
+func TxQueryScan[T any](txConn TxConn, query string, args ...any) ([]T, error) {
 	rows, err := txConn.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	result, err = Scan[T](rows)
+
+	// Scan 内部已经包含了 defer rows.Close()，去掉这里以保持和 conn.go 统一
+	//defer rows.Close()
+	result, err := Scan[T](rows)
 	if err != nil {
 		return nil, err
 	}
@@ -226,15 +231,14 @@ func TxQueryScan[T any](txConn TxConn, query string, args ...any) (result []T, e
 // TxQueryScanOne 与 TxQueryScan 类似，但只返回查询结果的第一行。
 // 它返回结果、一个布尔值（指示是否找到记录）和可能的错误。
 func TxQueryScanOne[T any](txConn TxConn, query string, args ...any) (T, bool, error) {
-	var result T
-	scan, err := TxQueryScan[T](txConn, query, args...)
+	var zero T
+	rows, err := txConn.Query(query, args...)
 	if err != nil {
-		return result, false, err
+		return zero, false, err
 	}
-	if len(scan) == 0 {
-		return result, false, nil
-	}
-	return scan[0], true, nil
+
+	// ScanOne 内部已包含 defer rows.Close()，且仅会解析第一行（不会像 TxQueryScan 一样遍历整个表集占用内存）
+	return ScanOne[T](rows)
 }
 
 // databaseName 从事务连接中获取数据库的名称。

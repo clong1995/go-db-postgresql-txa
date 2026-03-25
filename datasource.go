@@ -23,6 +23,7 @@ func MultiDatasource() ([]DBName, error) {
 		// 解析连接字符串
 		conf, err := pgxpool.ParseConfig(v)
 		if err != nil {
+			Close() // 清理已创建的连接池
 			return nil, errors.WithStack(err)
 		}
 		// 配置连接池参数
@@ -33,11 +34,14 @@ func MultiDatasource() ([]DBName, error) {
 		// 创建新的连接池
 		pool, err := pgxpool.NewWithConfig(context.Background(), conf)
 		if err != nil {
+			Close() // 清理已创建的连接池
 			return nil, errors.WithStack(err)
 		}
 
 		// Ping 数据库以验证连接
 		if err = pool.Ping(context.Background()); err != nil {
+			pool.Close()
+			Close() // 清理已创建的连接池
 			return nil, errors.WithStack(err)
 		}
 		dbName := DBName(conf.ConnConfig.Database)
