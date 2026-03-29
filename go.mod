@@ -3,8 +3,8 @@ module github.com/clong1995/go-db-postgresql-txa
 go 1.26
 
 require (
-	github.com/clong1995/go-ansi-color v0.0.0-20260314102151-cbbdfbe952a8
-	github.com/clong1995/go-config v0.0.0-20260315070032-d84683978967
+	github.com/clong1995/go-ansi-color v0.0.0-20260328163340-46c1c3efec53
+	github.com/clong1995/go-config v0.0.0-20260325145758-46c5a40c3ecf
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/pkg/errors v0.9.1
 	golang.org/x/net v0.52.0
