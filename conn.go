@@ -11,7 +11,7 @@ import (
 )
 
 // NewConn 根据提供的数据库名称从全局数据库连接池中创建一个新的 Conn 实例。
-func MultiConn(dbNames ...DBName) ([]Conn, error) {
+func MultiConn(dbNames ...string) ([]Conn, error) {
 	conns := make([]Conn, len(dbNames))
 	for i, v := range dbNames {
 		p := databasePool[v]

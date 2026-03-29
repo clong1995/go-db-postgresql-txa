@@ -13,8 +13,24 @@ import (
 // MultiTx 用于开启一个或多个数据库的事务。
 // 它返回一个 TxConn 切片，每个 TxConn 对应一个数据库连接，以及一个用于提交或回滚所有事务的函数。
 // 如果在开启事务期间发生任何错误，它会尝试回滚所有已开启的事务，并返回一个错误。
-func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
+func MultiTx(dbNames ...string) ([]TxConn, func(error) error, error) {
 	txConns := make([]TxConn, len(dbNames))
+	// rollBackAll 是一个辅助函数，用于回滚所有已开启的事务
+	rollBackAll := func() error {
+		var errJoin error
+		for _, txConn := range txConns {
+			if txConn.tx == nil {
+				continue
+			}
+			rollbackErr := txConn.tx.Rollback(context.Background())
+			// 忽略 ErrTxClosed，防止成功 Commit 后的事务被回滚时产生无意义的报错
+			if rollbackErr != nil && !stderrors.Is(rollbackErr, pgx.ErrTxClosed) {
+				errJoin = stderrors.Join(errJoin, errors.WithStack(rollbackErr))
+			}
+		}
+		return errJoin
+	}
+
 	var err error
 	// 遍历所有指定的数据库名称，为每个数据库开启一个事务
 	for i, v := range dbNames {
@@ -33,27 +49,10 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 		}
 	}
 
-	// rollBackAll 是一个辅助函数，用于回滚所有已开启的事务
-	rollBackAll := func() error {
-		var errJoin error
-		for _, txConn := range txConns {
-			if txConn.tx == nil {
-				continue
-			}
-			rollbackErr := txConn.tx.Rollback(context.Background())
-			// 忽略 ErrTxClosed，防止成功 Commit 后的事务被回滚时产生无意义的报错
-			if rollbackErr != nil && !stderrors.Is(rollbackErr, pgx.ErrTxClosed) {
-				errJoin = stderrors.Join(errJoin, errors.WithStack(rollbackErr))
-			}
-		}
-		return errJoin
-	}
-
 	// 如果在构建事务期间出错，则回滚所有事务并返回错误
 	if err != nil {
-		rollbackErr := rollBackAll()
-		err = stderrors.Join(err, rollbackErr)
-		return nil, nil, err
+		rollBackErr := rollBackAll()
+		return nil, nil, stderrors.Join(err, rollBackErr)
 	}
 
 	// commit 函数用于最终提交或回滚事务
@@ -69,8 +68,7 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 		for _, txConn := range txConns {
 			//var isCloseErr error
 			if txConn.tx.Conn().IsClosed() { // 如果其中一个事务连接已关闭
-				dbName := databaseName(txConn)
-				errCommit := errors.Errorf("数据库[%s]的事务连接已关闭", dbName)
+				errCommit := errors.Errorf("数据库[%s]的事务连接已关闭", txConn.tx.Conn().Config().Database)
 				//关闭所有
 				rollbackErr := rollBackAll()
 				return stderrors.Join(errCommit, rollbackErr)
@@ -241,9 +239,4 @@ func TxQueryScanOne[T any](txConn TxConn, query string, args ...any) (T, bool, e
 
 	// ScanOne 内部已包含 defer rows.Close()，且仅会解析第一行（不会像 TxQueryScan 一样遍历整个表集占用内存）
 	return ScanOne[T](rows)
-}
-
-// databaseName 从事务连接中获取数据库的名称。
-func databaseName(txConn TxConn) string {
-	return txConn.tx.Conn().Config().Database
 }

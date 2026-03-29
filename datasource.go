@@ -9,15 +9,15 @@ import (
 )
 
 // databasePool 是一个全局映射，用于存储数据库名称到其对应连接池的映射。
-var databasePool map[DBName]*pgxpool.Pool
-var dbName []DBName
+var databasePool map[string]*pgxpool.Pool
+var dbName []string
 
 // multiDatasource 根据全局配置 `configDatasource` 初始化一个或多个数据库连接池。
 // 它会解析每个数据源字符串，创建并配置连接池，然后测试连接。
 // 成功后，它会将连接池存储在全局的 `databasePool` 中，并返回所有数据库的名称。
 func start() {
-	dbName = make([]DBName, len(datasource))
-	databasePool = make(map[DBName]*pgxpool.Pool)
+	dbName = make([]string, len(datasource))
+	databasePool = make(map[string]*pgxpool.Pool)
 
 	for i, v := range datasource {
 		// 解析连接字符串
@@ -47,7 +47,7 @@ func start() {
 			pcolor.PrintFatal(prefix, err.Error())
 			return
 		}
-		name := DBName(conf.ConnConfig.Database)
+		name := conf.ConnConfig.Database
 		databasePool[name] = pool
 
 		dbName[i] = name
