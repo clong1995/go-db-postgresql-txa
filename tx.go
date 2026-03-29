@@ -91,6 +91,7 @@ func MultiTx(dbNames ...DBName) ([]TxConn, func(error) error, error) {
 	return txConns, commit, nil
 }
 
+/*
 // Tx 是对 MultiTx 的简化，用于处理单个数据库的事务。
 func Tx(dbName DBName) (TxConn, func(error) error, error) {
 	var txConn TxConn
@@ -142,6 +143,7 @@ func Tx5(dbName1, dbName2, dbName3, dbName4, dbName5 DBName) (TxConn, TxConn, Tx
 
 	return txConns[0], txConns[1], txConns[2], txConns[3], txConns[4], commit, nil
 }
+*/
 
 // TxConn 包装了 pgx.Tx，提供在事务上下文中执行数据库操作的方法。
 type TxConn struct {

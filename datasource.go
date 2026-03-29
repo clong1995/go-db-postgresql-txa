@@ -4,30 +4,31 @@ import (
 	"context"
 	"time"
 
+	pcolor "github.com/clong1995/go-ansi-color"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/pkg/errors"
 )
 
 // databasePool 是一个全局映射，用于存储数据库名称到其对应连接池的映射。
 var databasePool map[DBName]*pgxpool.Pool
-var prefix = "postgresql-txa"
+var dbName []DBName
 
-// MultiDatasource 根据全局配置 `configDatasource` 初始化一个或多个数据库连接池。
+// multiDatasource 根据全局配置 `configDatasource` 初始化一个或多个数据库连接池。
 // 它会解析每个数据源字符串，创建并配置连接池，然后测试连接。
 // 成功后，它会将连接池存储在全局的 `databasePool` 中，并返回所有数据库的名称。
-func MultiDatasource() ([]DBName, error) {
-	dbNames := make([]DBName, len(configDatasource))
+func start() {
+	dbName = make([]DBName, len(datasource))
 	databasePool = make(map[DBName]*pgxpool.Pool)
 
-	for i, v := range configDatasource {
+	for i, v := range datasource {
 		// 解析连接字符串
 		conf, err := pgxpool.ParseConfig(v)
 		if err != nil {
 			Close() // 清理已创建的连接池
-			return nil, errors.WithStack(err)
+			pcolor.PrintFatal(prefix, err.Error())
+			return
 		}
 		// 配置连接池参数
-		conf.MaxConns = configMaxConns
+		conf.MaxConns = maxConns
 		conf.MinConns = 1
 		conf.MaxConnIdleTime = time.Minute * 30
 
@@ -35,23 +36,26 @@ func MultiDatasource() ([]DBName, error) {
 		pool, err := pgxpool.NewWithConfig(context.Background(), conf)
 		if err != nil {
 			Close() // 清理已创建的连接池
-			return nil, errors.WithStack(err)
+			pcolor.PrintFatal(prefix, err.Error())
+			return
 		}
 
 		// Ping 数据库以验证连接
 		if err = pool.Ping(context.Background()); err != nil {
 			pool.Close()
 			Close() // 清理已创建的连接池
-			return nil, errors.WithStack(err)
+			pcolor.PrintFatal(prefix, err.Error())
+			return
 		}
-		dbName := DBName(conf.ConnConfig.Database)
-		databasePool[dbName] = pool
+		name := DBName(conf.ConnConfig.Database)
+		databasePool[name] = pool
 
-		dbNames[i] = dbName
+		dbName[i] = name
 	}
-	return dbNames, nil
+	return
 }
 
+/*
 // Datasource 是 MultiDatasource 的一个简化版本，用于初始化单个数据库连接。
 // 如果配置的数据源数量不是 1，它会返回一个错误。
 func Datasource() (DBName, error) {
@@ -117,6 +121,7 @@ func Datasource5() (DBName, DBName, DBName, DBName, DBName, error) {
 	}
 	return dbnames[0], dbnames[1], dbnames[2], dbnames[3], dbnames[4], nil
 }
+*/
 
 // Close 关闭所有已打开的数据库连接池。
 // 在应用程序退出时调用此函数以释放资源。
@@ -124,4 +129,5 @@ func Close() {
 	for _, v := range databasePool {
 		v.Close()
 	}
+	pcolor.PrintSucc(prefix, "pool closed")
 }

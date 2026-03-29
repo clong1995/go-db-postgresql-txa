@@ -10,15 +10,24 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// NewConn 根据提供的数据库名称从全局数据库连接池中创建一个新的 Conn 实例。
+func MultiConn(dbNames ...DBName) ([]Conn, error) {
+	conns := make([]Conn, len(dbNames))
+	for i, v := range dbNames {
+		p := databasePool[v]
+		if p == nil {
+			return nil, errors.Errorf("数据库[%s]不存在", v)
+		}
+		conns[i] = Conn{pool: databasePool[v]}
+	}
+
+	return conns, nil
+}
+
 // Conn 包装了 pgxpool.Pool，提供了一个非事务性的数据库连接。
 // 它用于执行单个的、不需要事务保证的数据库操作。
 type Conn struct {
 	pool *pgxpool.Pool
-}
-
-// NewConn 根据提供的数据库名称从全局数据库连接池中创建一个新的 Conn 实例。
-func NewConn(name DBName) Conn {
-	return Conn{pool: databasePool[name]}
 }
 
 // Query 在连接上执行一个查询，并返回 pgx.Rows。

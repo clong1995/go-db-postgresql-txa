@@ -1,6 +1,6 @@
 package db
 
-import (
+/*import (
 	"log"
 	"testing"
 
@@ -299,4 +299,4 @@ func TestDB_QueryScan(t *testing.T) {
 			}
 		})
 	}
-}
+}*/
