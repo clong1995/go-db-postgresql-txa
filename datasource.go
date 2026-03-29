@@ -129,5 +129,5 @@ func Close() {
 	for _, v := range databasePool {
 		v.Close()
 	}
-	pcolor.PrintSucc(prefix, "pool closed")
+	pcolor.PrintSucc(prefix, "datasourc closed")
 }
