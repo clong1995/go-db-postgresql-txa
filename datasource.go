@@ -52,6 +52,7 @@ func start() {
 
 		dbName[i] = name
 	}
+	pcolor.PrintSucc(prefix, "conn %v", dbName)
 	return
 }
 
