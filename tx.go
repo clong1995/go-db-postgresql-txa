@@ -10,10 +10,12 @@ import (
 	"golang.org/x/net/context"
 )
 
+type Commit func(error) error
+
 // MultiTx 用于开启一个或多个数据库的事务。
 // 它返回一个 TxConn 切片，每个 TxConn 对应一个数据库连接，以及一个用于提交或回滚所有事务的函数。
 // 如果在开启事务期间发生任何错误，它会尝试回滚所有已开启的事务，并返回一个错误。
-func MultiTx(dbNames ...string) ([]TxConn, func(error) error, error) {
+func MultiTx(dbNames ...string) ([]TxConn, Commit, error) {
 	txConns := make([]TxConn, len(dbNames))
 	// rollBackAll 是一个辅助函数，用于回滚所有已开启的事务
 	rollBackAll := func() error {
@@ -184,7 +186,9 @@ func (p TxConn) Batch(query string, data [][]any) error {
 		_ = batch.Queue(query, v...)
 	}
 	br := p.tx.SendBatch(context.Background(), batch)
-	defer br.Close()
+	defer func() {
+		_ = br.Close()
+	}()
 	// 必须迭代 Exec 获取结果，以确保捕获每条语句的准确错误，同时维护网络包状态
 	for i := 0; i < len(data); i++ {
 		if _, err := br.Exec(); err != nil {
