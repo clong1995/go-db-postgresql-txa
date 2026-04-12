@@ -20,10 +20,10 @@ func config() {
 	}
 
 	// 从配置中读取 "MAX CONNS"
-	// 这是一个可选配置。如果不存在或为0，则使用默认值 10。
+	// 这是一个可选配置。如果不存在或为0，则使用默认值 5。
 	configMaxConns, exists := conf.Value[int64]("MAX CONNS")
 	if !exists || configMaxConns == 0 {
-		maxConns = 10 // 默认最大连接数
+		maxConns = 5 // 默认最大连接数
 	} else {
 		maxConns = int32(configMaxConns)
 	}

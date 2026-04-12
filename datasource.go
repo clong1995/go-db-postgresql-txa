@@ -30,7 +30,7 @@ func start() {
 		// 配置连接池参数
 		conf.MaxConns = maxConns
 		conf.MinConns = 1
-		conf.MaxConnIdleTime = time.Minute * 30
+		conf.MaxConnIdleTime = time.Minute * 5
 
 		// 创建新的连接池
 		pool, err := pgxpool.NewWithConfig(context.Background(), conf)
