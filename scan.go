@@ -35,7 +35,7 @@ func Scan[T any](rows pgx.Rows) ([]T, error) {
 
 Base:
 	// 如果目标类型 T 是基本类型（如 int, string, bool 等）或 time.Time
-	result, err := pgx.CollectRows(rows, pgx.RowTo[T])
+	result, err := pgx.CollectRows[T](rows, pgx.RowTo[T])
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return []T{}, nil
@@ -70,7 +70,7 @@ func ScanOne[T any](rows pgx.Rows) (T, bool, error) {
 
 Base:
 	// 如果目标类型是基本类型或 time.Time
-	result, err := pgx.CollectOneRow(rows, pgx.RowTo[T])
+	result, err := pgx.CollectOneRow[T](rows, pgx.RowTo[T])
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return result, false, nil
